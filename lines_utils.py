@@ -278,6 +278,56 @@ def draw_lines_on_frame(frame, lines_info):
 
     return frame
 
+
+def orientamento(p, q, r):
+    return (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+
+
+def on_segment(p, q, r):
+    return min(p[0], r[0]) <= q[0] <= max(p[0], r[0]) and min(p[1], r[1]) <= q[1] <= max(p[1], r[1])
+
+
+def interseca(p1, p2, p3, p4):
+    o1 = orientamento(p1, p2, p3)
+    o2 = orientamento(p1, p2, p4)
+    o3 = orientamento(p3, p4, p1)
+    o4 = orientamento(p3, p4, p2)
+
+    if o1 * o2 < 0 and o3 * o4 < 0:
+        return True
+
+    # Controllo per i casi di allineamento
+    if o1 == 0 and on_segment(p1, p3, p2):
+        return True
+    if o2 == 0 and on_segment(p1, p4, p2):
+        return True
+    if o3 == 0 and on_segment(p3, p1, p4):
+        return True
+    if o4 == 0 and on_segment(p3, p2, p4):
+        return True
+
+    return False
+
+def check_crossed_line(track, lines_info):
+    for line in lines_info:
+        # Estrai le informazioni dalla linea
+        line_id = line['line_id']
+        start_point = line['start_point']
+        end_point = line['end_point']
+        arrow_start = line['arrow_start']
+        arrow_end = line['arrow_end']
+        start_track = track[len(track)-1]
+        end_track = track[len(track)-2]
+        if interseca(start_track,end_track, start_point, end_point):
+            vet_track = np.array([start_track,end_track])
+            vet_line = np.array([arrow_start,arrow_end])
+            dot_product = np.dot(vet_track,vet_line)
+            if dot_product > 0:
+                print(line_id, "stesso verso")
+            else:
+                print(line_id, "verso opposto")
+
+
 # Testing del codice
 if __name__ == "__main__":
     lines_info = get_lines_info()

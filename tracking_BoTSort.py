@@ -2,7 +2,7 @@ from collections import defaultdict
 import cv2
 import numpy as np
 from ultralytics import YOLO
-from lines_utils import draw_lines_on_frame, get_lines_info
+from lines_utils import draw_lines_on_frame, get_lines_info, check_crossed_line
 import time
 
 
@@ -120,6 +120,8 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                 points = np.hstack(track).astype(np.int32).reshape((-1, 1, 2))
                 cv2.polylines(annotated_frame, [points], isClosed=False, color=(230, 230, 230), thickness=10)
 
+                check_crossed_line(track, lines_info)
+
             # Display the annotated frame
             if show:
                 cv2.imshow("YOLO Tracking", annotated_frame)
@@ -131,16 +133,16 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
             # Break the loop if the end of the video is reached
             break
 
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-        discard_frames = int(elapsed_time/f)+1
-        d2 = int(discard_frames + ((discard_frames * (fst - ist))/f)) + 1
-        print(f'frame da scartare:{d2}, tempo impiegato per elaborare un frame:{elapsed_time}, frame da scartare1:{discard_frames}')
+        #end_time = time.time()
+        #elapsed_time = end_time - start_time
+        #discard_frames = int(elapsed_time/f)+1
+        #d2 = int(discard_frames + ((discard_frames * (fst - ist))/f)) + 1
+        #print(f'frame da scartare:{d2}, tempo impiegato per elaborare un frame:{elapsed_time}, frame da scartare1:{discard_frames}')
         # print(f'\n\n {elapsed_time}, {elapsed_time/f}\n\n')
-        while d2 > 0 and not first_frame:
-            cap.read()
-            d2 -= 1
-        first_frame = False
+        #while d2 > 0 and not first_frame:
+        #    cap.read()
+        #    d2 -= 1
+        #first_frame = False
 
     # Release the video capture object and close the display window
     cap.release()
