@@ -4,9 +4,9 @@ import torch
 from torch.utils import data
 import numpy as np
 from torchvision import transforms as T
-from .reid_dataset import import_MarketDuke_nodistractors
-from .reid_dataset import import_Market1501Attribute_binary
-from .reid_dataset import import_DukeMTMCAttribute_binary
+from reid_dataset import import_MarketDuke_nodistractors
+from reid_dataset import import_Market1501Attribute_binary
+from reid_dataset import import_DukeMTMCAttribute_binary
 
 
 class Train_Dataset(data.Dataset):

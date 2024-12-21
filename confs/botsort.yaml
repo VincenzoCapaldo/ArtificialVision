@@ -16,4 +16,3 @@ gmc_method: None
 proximity_thresh: 0.5
 appearance_thresh: 0.25
 with_reid: False
-use_camera_motion: false # Non fa usare il motion camera control

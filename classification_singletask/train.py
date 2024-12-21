@@ -20,6 +20,7 @@ else:
 dataset_dict = {
     'market'  :  'Market-1501',
     'duke'  :  'DukeMTMC-reID',
+    'custom' : 'Custom-dataset'
 }
 
 
@@ -28,22 +29,20 @@ dataset_dict = {
 # --------
 parser = argparse.ArgumentParser(description='Training')
 parser.add_argument('--data-path', default='/path/to/dataset', type=str, help='path to the dataset')
-parser.add_argument('--dataset', default='market', type=str, help='dataset: market, duke')
+parser.add_argument('--dataset', default='market', type=str, help='dataset: market, duke, custom')
 parser.add_argument('--backbone', default='resnet50', type=str, help='backbone: resnet50, resnet34, resnet18, densenet121')
 parser.add_argument('--batch-size', default=32, type=int, help='batch size')
 parser.add_argument('--num-epoch', default=60, type=int, help='num of epoch')
 parser.add_argument('--num-workers', default=2, type=int, help='num_workers')
-parser.add_argument('--use-id', action='store_true', help='use identity loss')
-parser.add_argument('--lamba', default=1.0, type=float, help='weight of id loss')
 args = parser.parse_args()
 
-assert args.dataset in ['market', 'duke']
+assert args.dataset in ['market', 'duke', 'custom']
 assert args.backbone in ['resnet50', 'resnet34', 'resnet18', 'densenet121']
 
 dataset_name = dataset_dict[args.dataset]
-model_name = '{}_nfc_id'.format(args.backbone) if args.use_id else '{}_nfc'.format(args.backbone)
+model_name = '{}_nfc'.format(args.backbone)
 data_dir = args.data_path
-model_dir = os.path.join('./checkpoints', args.dataset, model_name)
+model_dir = os.path.join('./classification_singletask/checkpoints', args.dataset, model_name)
 
 if not os.path.isdir(model_dir):
     os.makedirs(model_dir)
@@ -101,14 +100,14 @@ dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
 # images, indices, labels, ids, cams, names = next(iter(dataloaders['train']))
 
 num_label = image_datasets['train'].num_label()
-num_id = image_datasets['train'].num_id()
+#num_id = image_datasets['train'].num_id()
 labels_list = image_datasets['train'].labels()
 
 
 ######################################################################
 # Model and Optimizer
 # ------------------
-model = get_model(model_name, num_label, args.use_id, num_id=num_id)
+model = get_model(model_name, num_label)
 if use_gpu:
     model = model.cuda()
 
@@ -160,14 +159,8 @@ def train_model(model, optimizer, scheduler, num_epochs):
                 optimizer.zero_grad()
 
                 # forward
-                if not args.use_id:
-                    pred_label = model(images)
-                    total_loss = criterion_bce(pred_label, labels)
-                else:
-                    pred_label, pred_id = model(images)
-                    label_loss = criterion_bce(pred_label, labels)
-                    id_loss = criterion_ce(pred_id, indices)
-                    total_loss = label_loss + args.lamba * id_loss
+                pred_label = model(images)
+                total_loss = criterion_bce(pred_label, labels)
 
                 # backward + optimize only if in training phase
                 if phase == 'train':
@@ -179,12 +172,8 @@ def train_model(model, optimizer, scheduler, num_epochs):
                 running_loss += total_loss.item()
                 running_corrects += torch.sum(preds == labels.byte()).item() / num_label
                 if count % 100 == 0:
-                    if not args.use_id:
-                        print('step: ({}/{})  |  label loss: {:.4f}'.format(
-                            count*args.batch_size, dataset_sizes[phase], total_loss.item()))
-                    else:
-                        print('step: ({}/{})  |  label loss: {:.4f}  |  id loss: {:.4f}'.format(
-                            count*args.batch_size, dataset_sizes[phase], label_loss.item(), id_loss.item()))
+                    print('step: ({}/{})  |  label loss: {:.4f}'.format(
+                        count*args.batch_size, dataset_sizes[phase], total_loss.item()))
 
             epoch_loss = running_loss / len(dataloaders[phase])
             epoch_acc = running_corrects / dataset_sizes[phase]

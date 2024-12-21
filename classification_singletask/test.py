@@ -4,7 +4,6 @@ import scipy.io
 import torch
 import numpy as np
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-# from sklearn.exceptions import UndefinedMetricWarning
 from datafolder.folder import Test_Dataset
 from net import get_model
 
@@ -12,20 +11,22 @@ from net import get_model
 ######################################################################
 # Settings
 # ---------
-use_gpu = True
+if torch.cuda.is_available():
+    use_gpu = True
+else:
+    use_gpu = False
 dataset_dict = {
     'market'  :  'Market-1501',
     'duke'  :  'DukeMTMC-reID',
+    'custom' : 'Custom-dataset'
 }
-num_cls_dict = { 'market':30, 'duke':23 }
-num_ids_dict = { 'market':751, 'duke':702 }
 
 
 ######################################################################
 # Argument
 # ---------
 parser = argparse.ArgumentParser(description='Testing')
-parser.add_argument('--data-path', default='/home/xxx/reid/', type=str, help='path to the dataset')
+parser.add_argument('--data-path', default='/path/to/dataset', type=str, help='path to the dataset')
 parser.add_argument('--dataset', default='market', type=str, help='dataset')
 parser.add_argument('--backbone', default='resnet50', type=str, help='model')
 parser.add_argument('--batch-size', default=50, type=int, help='batch size')
@@ -33,14 +34,13 @@ parser.add_argument('--num-epoch', default=60, type=int, help='num of epoch')
 parser.add_argument('--num-workers', default=2, type=int, help='num_workers')
 parser.add_argument('--which-epoch',default='last', type=str, help='0,1,2,3...or last')
 parser.add_argument('--print-table',action='store_true', help='print results with table format')
-parser.add_argument('--use-id', action='store_true', help='use identity loss')
 args = parser.parse_args()
 
-assert args.dataset in ['market', 'duke']
+assert args.dataset in ['market', 'duke', 'custom']
 assert args.backbone in ['resnet50', 'resnet34', 'resnet18', 'densenet121']
 
 dataset_name = dataset_dict[args.dataset]
-model_name = '{}_nfc_id'.format(args.backbone) if args.use_id else '{}_nfc'.format(args.backbone)
+model_name = '{}_nfc'.format(args.backbone)
 data_dir = args.data_path
 model_dir = os.path.join('./checkpoints', args.dataset, model_name)
 result_dir = os.path.join('./result', args.dataset, model_name)
@@ -88,13 +88,12 @@ test_loader = get_dataloader()['gallery']
 attribute_list = test_loader.dataset.labels()
 num_label = len(attribute_list)
 num_sample = len(test_loader.dataset)
-num_id = num_ids_dict[args.dataset]
 
 
 ######################################################################
 # Model
 # ---------
-model = get_model(model_name, num_label, use_id=args.use_id, num_id=num_id)
+model = get_model(model_name, num_label)
 model = load_network(model)
 if use_gpu:
     model = model.cuda()
@@ -114,10 +113,7 @@ with torch.no_grad():
         if use_gpu:
             images = images.cuda()
         # forward
-        if not args.use_id:
-            pred_label = model(images)
-        else:
-            pred_label, _ = model(images)
+        pred_label = model(images)
 
         preds = torch.gt(pred_label, torch.ones_like(pred_label)/2)
         # transform to numpy format

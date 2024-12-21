@@ -57,4 +57,3 @@ class ClassBlock(nn.Module):
         x = self.add_block(x)
         x = self.classifier(x)
         return x
-
