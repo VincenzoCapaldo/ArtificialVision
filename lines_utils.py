@@ -316,16 +316,16 @@ def check_crossed_line(track, lines_info):
         end_point = line['end_point']
         arrow_start = line['arrow_start']
         arrow_end = line['arrow_end']
-        start_track = track[len(track)-1]
-        end_track = track[len(track)-2]
+        end_track = track[len(track)-1]
+        start_track = track[len(track)-2]
         if interseca(start_track,end_track, start_point, end_point):
-            vet_track = np.array([start_track,end_track])
-            vet_line = np.array([arrow_start,arrow_end])
+            vet_track = np.array([end_track[0] - start_track[0],end_track[1] - start_track[1]])
+            vet_line = np.array([arrow_end[0] - arrow_start[0],arrow_end[1] - arrow_start[1]])
             dot_product = np.dot(vet_track,vet_line)
             if dot_product > 0:
-                print(line_id, "stesso verso")
+                print(line_id, "stesso verso\n\n\n\n\n\n\n")
             else:
-                print(line_id, "verso opposto")
+                print(line_id, "verso opposto\n\n\n\n\n\n\n")
 
 
 # Testing del codice
