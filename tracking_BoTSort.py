@@ -2,6 +2,8 @@ from collections import defaultdict
 import cv2
 import numpy as np
 from ultralytics import YOLO
+
+from OutputWriter import OutputWriter
 from lines_utils import  get_lines_info, check_crossed_line
 import time
 import gui_utils as gui
@@ -14,8 +16,11 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
 
     # Load lines info
     lines_info = get_lines_info()
-
     number_of_lines = len(lines_info)
+
+    # Create an output-writer object to write on a json file the results
+    output_writer = OutputWriter()
+
     # Open the video file
     cap = cv2.VideoCapture(video_path)
     if real_time:
@@ -52,12 +57,9 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                 # general information of the scene to display
                 # implementare il conteggio degli attraversamenti
                 text = []
-                p = 0
                 text.append(f"Total People: {len(track_ids)}")
-                for i in range(number_of_lines):
-                    # da rivedere la costruzione di questa frase (magari usare line_id)
-
-                    text.append(f"Passages for line {i + 1}: {p}")
+                for line in lines_info:
+                    text.append(f"Passages for line {line['line_id']}: {line['crossing_counting']}")
 
                 # Draw red bounding box
                 gui.add_bounding_box(annotated_frame, top_left_corner, bottom_right_corner)
@@ -78,8 +80,10 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                 # Draw the tracking lines
                 points = np.hstack(track).astype(np.int32).reshape((-1, 1, 2))
                 cv2.polylines(annotated_frame, [points], isClosed=False, color=(230, 230, 230), thickness=10)
-
                 check_crossed_line(track, lines_info)
+
+                # Add a new person
+                output_writer.add_person(track_id)
 
             # Display the annotated frame
             if show:

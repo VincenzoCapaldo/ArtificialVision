@@ -2,7 +2,6 @@ import numpy as np
 from math import pi, cos, sin
 import json
 import cv2
-
 from gui_utils import draw_lines_on_frame
 
 
@@ -301,10 +300,7 @@ def check_crossed_line(track, lines_info):
             vet_line = np.array([arrow_end[0] - arrow_start[0], arrow_end[1] - arrow_start[1]])
             dot_product = np.dot(vet_track, vet_line)
             if dot_product > 0:
-                print(line_id, "stesso verso\n\n\n\n\n\n\n")
                 increment_crossing_counting(line)
-            else:
-                print(line_id, "verso opposto\n\n\n\n\n\n\n")
 
 
 # Testing del codice
