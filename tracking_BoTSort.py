@@ -29,6 +29,9 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
     # Store the track history
     track_history = defaultdict(lambda: [])
     first_frame = True
+
+    lista_attraversamenti = {}
+
     # Loop through the video frames
     while cap.isOpened():
         # Read a frame from the video
@@ -80,7 +83,12 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                 # Draw the tracking lines
                 points = np.hstack(track).astype(np.int32).reshape((-1, 1, 2))
                 cv2.polylines(annotated_frame, [points], isClosed=False, color=(230, 230, 230), thickness=10)
-                check_crossed_line(track, lines_info)
+
+                crossed_line_id = check_crossed_line(track, lines_info)
+                if(len(crossed_line_id)!=0):
+                    if not(track_id in lista_attraversamenti):
+                        lista_attraversamenti[track_id] = []
+                    lista_attraversamenti[track_id].extend(crossed_line_id)
 
                 # Add a new person
                 output_writer.add_person(track_id)
@@ -105,6 +113,8 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                 cap.read()
                 d2 -= 1
             first_frame = False
+
+    print(lista_attraversamenti)
 
     # Release the video capture object and close the display window
     cap.release()

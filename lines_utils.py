@@ -286,6 +286,7 @@ def interseca(p1, p2, p3, p4):
 
 
 def check_crossed_line(track, lines_info):
+    crossed_line_id = []
     for line in lines_info:
         # Estrai le informazioni dalla linea
         line_id = line['line_id']
@@ -301,7 +302,8 @@ def check_crossed_line(track, lines_info):
             dot_product = np.dot(vet_track, vet_line)
             if dot_product > 0:
                 increment_crossing_counting(line)
-
+                crossed_line_id.append(line_id)
+    return crossed_line_id
 
 # Testing del codice
 if __name__ == "__main__":
