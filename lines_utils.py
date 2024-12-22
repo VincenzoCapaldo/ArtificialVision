@@ -3,6 +3,9 @@ from math import pi, cos, sin
 import json
 import cv2
 
+from gui_utils import draw_lines_on_frame
+
+
 def real_to_pixel(x_real, y_real, config_file="confs/camera_config.json"):
     """
     Converte le coordinate reali (x, y) in coordinate di pixel nell'immagine.
@@ -131,7 +134,8 @@ def load_lines(config_file="confs/lines_config.json"):
 
         # Converto le coordinate reali in coordinate in pixel
         try:
-            x_pixel, y_pixel = real_to_pixel(np.array([x1_real, x2_real]), np.array([y1_real, y2_real]))  # Chiamata alla funzione real_to_pixel per ottenere le coordinate in pixel
+            x_pixel, y_pixel = real_to_pixel(np.array([x1_real, x2_real]), np.array(
+                [y1_real, y2_real]))  # Chiamata alla funzione real_to_pixel per ottenere le coordinate in pixel
 
             # Salvo le linee in coordinate reali nella lista `lines_in_real` solo se riesco a convertire
             lines_in_real.append({
@@ -154,6 +158,7 @@ def load_lines(config_file="confs/lines_config.json"):
             print(e)
 
     return lines_in_real, lines_in_pixel  # Restituisce le due liste con le linee in coordinate reali e in pixel
+
 
 def get_points_from_lines(lines_in_pixel):
     """
@@ -181,6 +186,7 @@ def get_points_from_lines(lines_in_pixel):
         points.append((line['x2'], line['y2']))
     return ids, points
 
+
 def get_lines_info():
     """
     Genera informazioni dettagliate sulle linee, includendo ID, punti iniziali e finali,
@@ -197,8 +203,9 @@ def get_lines_info():
     _, lines = load_lines()
     ids, points = get_points_from_lines(lines)
     info_lines = []
+    crossing_counting = 0
     for i in range(len(ids)):
-        j = i * 2 # Per ogni id devo prendere 2 punti
+        j = i * 2  # Per ogni id devo prendere 2 punti
         # Prendi i punti e l'ID associato
         start_point = points[j]
         end_point = points[j + 1]
@@ -233,16 +240,20 @@ def get_lines_info():
         arrow_end = (int(mid_x + perp_dx * arrow_lenght), int(mid_y + perp_dy * arrow_lenght))
 
         info_lines.append({
-            'line_id': line_id,     # ID della linea
+            'line_id': line_id,  # ID della linea
             'start_point': start_point,  # Punto di inizio della linea
             'end_point': end_point,  # Punto di fine della linea
             'text_position': text_position,  # Coordinate del testo
             'arrow_start': arrow_start,  # Coordinate del punto dell'inizio della freccia
-            'arrow_end': arrow_end   # Coordinate del punto della fine della freccia
+            'arrow_end': arrow_end,  # Coordinate del punto della fine della freccia
+            'crossing_counting': crossing_counting  # Numero di volte che la linea è stata attraversata
         })
 
     return info_lines
 
+
+def increment_crossing_counting(info_line):
+    info_line['crossing_counting'] += 1
 
 
 def orientamento(p, q, r):
@@ -274,6 +285,7 @@ def interseca(p1, p2, p3, p4):
 
     return False
 
+
 def check_crossed_line(track, lines_info):
     for line in lines_info:
         # Estrai le informazioni dalla linea
@@ -282,14 +294,15 @@ def check_crossed_line(track, lines_info):
         end_point = line['end_point']
         arrow_start = line['arrow_start']
         arrow_end = line['arrow_end']
-        end_track = track[len(track)-1]
-        start_track = track[len(track)-2]
-        if interseca(start_track,end_track, start_point, end_point):
-            vet_track = np.array([end_track[0] - start_track[0],end_track[1] - start_track[1]])
-            vet_line = np.array([arrow_end[0] - arrow_start[0],arrow_end[1] - arrow_start[1]])
-            dot_product = np.dot(vet_track,vet_line)
+        end_track = track[len(track) - 1]
+        start_track = track[len(track) - 2]
+        if interseca(start_track, end_track, start_point, end_point):
+            vet_track = np.array([end_track[0] - start_track[0], end_track[1] - start_track[1]])
+            vet_line = np.array([arrow_end[0] - arrow_start[0], arrow_end[1] - arrow_start[1]])
+            dot_product = np.dot(vet_track, vet_line)
             if dot_product > 0:
                 print(line_id, "stesso verso\n\n\n\n\n\n\n")
+                increment_crossing_counting(line)
             else:
                 print(line_id, "verso opposto\n\n\n\n\n\n\n")
 

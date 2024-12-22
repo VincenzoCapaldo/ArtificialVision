@@ -12,6 +12,7 @@ def main():
     show = True  # A boolean flag to display the processed video with tracked objects
     #model_path = "models/yolov8m.pt"
     start_track(device, video_path=video_path, show=show, real_time=True)
+
 # Controllo per eseguire il codice solo quando il file è eseguito direttamente
 if __name__ == "__main__":
     main()
