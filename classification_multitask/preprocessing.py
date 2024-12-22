@@ -4,23 +4,27 @@ import os
 from PIL import Image, ImageOps
 from configuration_parameters import DatasetConfig
 from tqdm import tqdm
+import shutil
 
 # config has all the preprocessing configuration parameters
 config = DatasetConfig
 # path of the training and test sets
-TRAIN_IMG_PATH = config.TRAIN_IMG_PATH
-TRAIN_LABEL_PATH = config.TRAIN_LABEL_PATH
-TEST_IMG_PATH = config.TEST_IMG_PATH
-TEST_LABEL_PATH = config.TEST_LABEL_PATH
+TRAIN_IMG_PATH = '../../Dataset/training_set/training_set'
+TRAIN_LABEL_PATH = '../../Dataset/training_set.txt'
 
+TEST_IMG_PATH = '../../Dataset/validation_set/validation_set'
+TEST_LABEL_PATH = '../../Dataset/validation_set.txt'
+VALIDATION_LABEL_PATH = '../../PreprocessedDataset/val_split.txt'
 # new dataset location
-OUTPUT_PATH = "../../PreprocessedDataset2/"
+OUTPUT_PATH = "../../PreprocessedDataset/"
 TRAIN_OUTPUT_PATH = os.path.join(OUTPUT_PATH, "training_set/")
 TEST_OUTPUT_PATH = os.path.join(OUTPUT_PATH, "test_set/")
+VALIDATION_OUTPUT_PATH = os.path.join(OUTPUT_PATH, "validation_set/")
 
 # create directories if needed
 os.makedirs(TRAIN_OUTPUT_PATH, exist_ok=True)
 os.makedirs(TEST_OUTPUT_PATH, exist_ok=True)
+os.makedirs(VALIDATION_OUTPUT_PATH, exist_ok=True)
 
 
 def resize(img, target_size=config.IMAGE_SIZE, padding=False):
@@ -60,15 +64,48 @@ def preprocess_and_save_images(input_path, output_path, target_size=config.IMAGE
                         print(f"Fail while processing {input_file_path}: {e}")
                     pbar.update(1)
 
+#validation_file =  '../../PreprocessedDataset/val_split.txt'
+# input path = "../../PreprocessedDataset/training_set"
+#validation output path = "../../PreprocessedDataset/validation_set"
+def move_validation_images(validation_file, training_path, validation_output_path):
+    """
+    Reads file names from a validation split file and moves corresponding images from the training folder
+    to the validation folder.
 
-PADDING = False
-print("Preprocessing of the training_set...")
-preprocess_and_save_images(TRAIN_IMG_PATH, TRAIN_OUTPUT_PATH, config.IMAGE_SIZE, PADDING)
+    :param validation_file: Path to the validation split file (CSV format, first column contains file names).
+    :param training_path: Path to the training images folder.
+    :param validation_output_path: Path to the validation images folder.
+    """
+    # Read the validation file
+    with open(validation_file, 'r') as f:
+        image_names = [line.strip().split(',')[0] for line in f.readlines()]
 
-print("Preprocessing of the test_set (ex validation_set)...")
-preprocess_and_save_images(TEST_IMG_PATH, TEST_OUTPUT_PATH, config.IMAGE_SIZE, PADDING)
+    os.makedirs(validation_output_path, exist_ok=True)
 
-print(f"Preprocessed dataset stored in: {OUTPUT_PATH}")
+    # Move each image
+    for image_name in tqdm(image_names, desc="Moving validation images", unit="file"):
+        input_file_path = os.path.join(training_path, image_name)
+        output_file_path = os.path.join(validation_output_path, image_name)
+
+        if os.path.exists(input_file_path):
+            try:
+                shutil.move(input_file_path, output_file_path)
+            except Exception as e:
+                print(f"Failed to move {input_file_path}: {e}")
+        else:
+            print(f"Image {input_file_path} does not exist.")
+
+# PADDING = False
+# print("Preprocessing of the training_set...")
+# preprocess_and_save_images(TRAIN_IMG_PATH, TRAIN_OUTPUT_PATH, config.IMAGE_SIZE, PADDING)
+#
+# print("Preprocessing of the test_set (ex validation_set)...")
+# preprocess_and_save_images(TEST_IMG_PATH, TEST_OUTPUT_PATH, config.IMAGE_SIZE, PADDING)
+
+# print("Moving validation images...")
+# move_validation_images(VALIDATION_LABEL_PATH, TRAIN_OUTPUT_PATH, VALIDATION_OUTPUT_PATH)
 
 
 
+
+# print(f"Preprocessed dataset stored in: {OUTPUT_PATH}")

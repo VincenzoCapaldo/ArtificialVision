@@ -3,7 +3,7 @@ class DatasetConfig:
     IMAGE_SIZE: tuple = (224, 224)  # width, height. It's commonly used.
     CHANNELS: int = 3  # image channels (RGB = 3)
     NUM_CLASSES: int = 3  # gender, bag, hat
-    VALIDATION_DIM: float = 0.2  # divide training and validation in 80% and 20%
+    TRAINING_DIM: float = 0.2  # divide training and validation in 80% and 20%
 
     # resnet50 lavora su input normalizzati e il modello è stato allenato sul dataset ImageNet che ha i seguenti valori
     # di media e deviazione standard (ma non sono sicuro se dobbiamo usare questi o dobbiamo calcolarli sul nostro

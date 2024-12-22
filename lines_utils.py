@@ -243,40 +243,6 @@ def get_lines_info():
 
     return info_lines
 
-# Funzione per disegnare le linee sui frame
-def draw_lines_on_frame(frame, lines_info):
-    """
-    Disegna linee blu sui frame utilizzando le informazioni fornite da get_lines_info.
-    :param frame: Frame corrente (immagine in formato numpy array).
-    :param lines: Lista di dizionari con informazioni sulle linee, generata da get_lines_info.
-    """
-    height, width = frame.shape[:2]
-    for line in lines_info:
-        # Estrai le informazioni dalla linea
-        line_id = line['line_id']
-        start_point = line['start_point']
-        end_point = line['end_point']
-        text_position = line['text_position']
-        arrow_start = line['arrow_start']
-        arrow_end = line['arrow_end']
-
-        # Clipping delle coordinate nei limiti dell'immagine, per evitare problemi al confine (forse da mettere nella funzione precedente per ridurre la computazione)
-        start_point = (np.clip(start_point[0], 0, width - 1), np.clip(start_point[1], 0, height - 1))
-        end_point = (np.clip(end_point[0], 0, width - 1), np.clip(end_point[1], 0, height - 1))
-        text_position = (np.clip(text_position[0], 0, width - 1), np.clip(text_position[1], 0, height - 1))
-        arrow_start = (np.clip(arrow_start[0], 0, width - 1), np.clip(arrow_start[1], 0, height - 1))
-        arrow_end = (np.clip(arrow_end[0], 0, width - 1), np.clip(arrow_end[1], 0, height - 1))
-
-        # Disegna la linea blu
-        cv2.line(frame, start_point, end_point, (255, 0, 0), thickness=3)
-
-        # Disegna l'ID in alto a sinistra della linea
-        cv2.putText(frame, str(line_id), text_position, cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 0, 0), thickness=3)
-
-        # Disegna la freccia
-        cv2.arrowedLine(frame, arrow_start, arrow_end, (255, 0, 0), thickness=3, tipLength=0.5)
-
-    return frame
 
 
 def orientamento(p, q, r):

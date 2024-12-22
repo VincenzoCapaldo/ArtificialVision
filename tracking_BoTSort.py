@@ -2,11 +2,12 @@ from collections import defaultdict
 import cv2
 import numpy as np
 from ultralytics import YOLO
-from lines_utils import draw_lines_on_frame, get_lines_info, check_crossed_line
+from lines_utils import  get_lines_info, check_crossed_line
 import time
+import gui_utils as gui
 
 
-def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio.mp4", show=False, tracker="confs/botsort.yaml"):
+def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio.mp4", show=False, real_time=True, tracker="confs/botsort.yaml"):
 
     # Load the YOLO model
     model = YOLO(model_path).to(device)
@@ -14,20 +15,22 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
     # Load lines info
     lines_info = get_lines_info()
 
+    number_of_lines = len(lines_info)
     # Open the video file
     cap = cv2.VideoCapture(video_path)
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    f = 1/fps
+    if real_time:
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        ms_per_frame = 1/fps
     # Store the track history
     track_history = defaultdict(lambda: [])
-    first_frame =True
+    first_frame = True
     # Loop through the video frames
     while cap.isOpened():
         # Read a frame from the video
-        ist = time.time()
+        # check the time for read one frame
+        start_read_time = time.time()
         success, frame = cap.read()
-        fst = time.time()
-        start_time = time.time()
+        start_time = end_read_time = time.time()
         if success:
             # Run YOLO11 tracking on the frame, persisting tracks between frames
             results = model.track(frame, persist=True, tracker=tracker, classes=[0])
@@ -43,72 +46,28 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
             for box, track_id in zip(boxes, track_ids):
                 x, y, w, h = box
                 x1, y1, x2, y2 = int(x - w / 2), int(y - h / 2), int(x + w / 2), int(y + h / 2)
+                top_left_corner = (x1, y1)
+                bottom_right_corner = (x2, y2)
 
-                # QUESTA PARTE DEI DISEGNI METTERLA IN UNA FUNZIONE
+                # general information of the scene to display
+                # implementare il conteggio degli attraversamenti
+                text = []
+                p = 0
+                text.append(f"Total People: {len(track_ids)}")
+                for i in range(number_of_lines):
+                    # da rivedere la costruzione di questa frase (magari usare line_id)
+
+                    text.append(f"Passages for line {i + 1}: {p}")
+
                 # Draw red bounding box
-                cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 0, 255), 4)  # Red color
-
-                # Define the position for the text (id delle persone)
-                text = f"{track_id}"
-                font_scale = 0.6
-                font_thickness = 2
-                font = cv2.FONT_HERSHEY_SIMPLEX
-                text_size = cv2.getTextSize(text, font, font_scale, font_thickness)[0]
-                text_x, text_y = x1 + 5, y1 + 20  # Slightly offset inside the BB
-                text_width, text_height = text_size[0], text_size[1]
-                background_start = (text_x - 2, text_y - text_height - 2)  # Add padding
-                background_end = (text_x + text_width + 2, text_y + 2)
-
-                # Draw white rectangle as background for text (id delle persone)
-                cv2.rectangle(annotated_frame, background_start, background_end, (255, 255, 255), -1)  # White color
-
-                # Draw track ID in red over the background
-                cv2.putText(
-                    annotated_frame,
-                    text,
-                    (text_x, text_y),
-                    font,
-                    font_scale,
-                    (0, 0, 255),  # Red color
-                    font_thickness
-                )
-
-                # Definizione del numero di persone rilevate
-                num_people = len(track_ids)  # Supponendo che track_ids rappresenti gli ID delle persone rilevate
-                text = f"Total People: {num_people}"
-
-                # Parametri per il testo
-                font_scale = 0.8
-                font_thickness = 2
-                font = cv2.FONT_HERSHEY_SIMPLEX
-
-                # Calcolo della dimensione del testo
-                text_size = cv2.getTextSize(text, font, font_scale, font_thickness)[0]
-                text_width, text_height = text_size[0], text_size[1]
-
-                # Definizione della posizione del rettangolo
-                padding = 10  # Spazio extra intorno al testo
-                top_left_corner = (padding, padding)
-                bottom_right_corner = (padding + text_width + 2 * padding, padding + text_height + 2 * padding)
-
-                # Disegna il rettangolo bianco
-                cv2.rectangle(annotated_frame, top_left_corner, bottom_right_corner, (255, 255, 255),
-                              -1)  # Bianco riempito
-
-                # Scrivi il testo sopra il rettangolo
-                text_position = (top_left_corner[0] + padding, top_left_corner[1] + text_height + padding - 5)
-                cv2.putText(
-                    annotated_frame,
-                    text,
-                    text_position,
-                    font,
-                    font_scale,
-                    (0, 0, 0),  # Colore nero per il testo
-                    font_thickness
-                )
-
+                gui.add_bounding_box(annotated_frame, top_left_corner, bottom_right_corner)
+                # Draw the tracked people ID
+                gui.add_track_id(annotated_frame, track_id, top_left_corner)
+                # Draw general information about the scene
+                gui.add_info_scene(annotated_frame, text)
                 # Draw lines
-                annotated_frame = draw_lines_on_frame(annotated_frame, lines_info)
+                annotated_frame = gui.draw_lines_on_frame(annotated_frame, lines_info)
+
 
                 # FINE DISEGNI, INIZIO DISEGNI TRACCE
                 track = track_history[track_id]
@@ -133,16 +92,15 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
             # Break the loop if the end of the video is reached
             break
 
-        #end_time = time.time()
-        #elapsed_time = end_time - start_time
-        #discard_frames = int(elapsed_time/f)+1
-        #d2 = int(discard_frames + ((discard_frames * (fst - ist))/f)) + 1
-        #print(f'frame da scartare:{d2}, tempo impiegato per elaborare un frame:{elapsed_time}, frame da scartare1:{discard_frames}')
-        # print(f'\n\n {elapsed_time}, {elapsed_time/f}\n\n')
-        #while d2 > 0 and not first_frame:
-        #    cap.read()
-        #    d2 -= 1
-        #first_frame = False
+        end_time = time.time()
+        if real_time:
+            elapsed_time = end_time - start_time
+            discard_frames = int(elapsed_time/ms_per_frame)+1
+            d2 = int(discard_frames + ((discard_frames * (end_read_time-start_read_time))/ms_per_frame))+1
+            while d2 > 0 and not first_frame:
+                cap.read()
+                d2 -= 1
+            first_frame = False
 
     # Release the video capture object and close the display window
     cap.release()

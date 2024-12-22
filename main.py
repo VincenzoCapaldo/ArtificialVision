@@ -1,7 +1,6 @@
 import torch
 from tracking_BoTSort import start_track
 
-
 def main():
     if torch.cuda.is_available():
         device = torch.device("cuda")
@@ -12,8 +11,7 @@ def main():
     video_path = 'videos/Atrio.mp4'  # Path to the input video file
     show = True  # A boolean flag to display the processed video with tracked objects
     #model_path = "models/yolov8m.pt"
-    start_track(device, video_path=video_path, show=show)
-
+    start_track(device, video_path=video_path, show=show, real_time=True)
 # Controllo per eseguire il codice solo quando il file è eseguito direttamente
 if __name__ == "__main__":
     main()
