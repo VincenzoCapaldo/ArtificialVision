@@ -4,7 +4,7 @@ import numpy as np
 from ultralytics import YOLO
 
 from OutputWriter import OutputWriter
-from lines_utils import  get_lines_info, check_crossed_line
+from lines_utils import get_lines_info, check_crossed_line
 import time
 import gui_utils as gui
 
@@ -84,6 +84,7 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                 points = np.hstack(track).astype(np.int32).reshape((-1, 1, 2))
                 cv2.polylines(annotated_frame, [points], isClosed=False, color=(230, 230, 230), thickness=10)
 
+                #
                 crossed_line_id = check_crossed_line(track, lines_info)
                 if(len(crossed_line_id)!=0):
                     if not(track_id in lista_attraversamenti):
@@ -114,7 +115,16 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                 d2 -= 1
             first_frame = False
 
-    print(lista_attraversamenti)
+    # Add trajectory for all the people
+    for id in lista_attraversamenti:
+        trajectory = lista_attraversamenti[id]
+        output_writer.set_trajectory(id, trajectory)
+
+    # Add classification information for all the people
+
+
+    # Print people info on "./output/output.json" file
+    output_writer.write_output()
 
     # Release the video capture object and close the display window
     cap.release()

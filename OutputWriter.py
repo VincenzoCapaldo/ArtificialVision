@@ -21,15 +21,14 @@ class OutputWriter:
         for person in self.people:
             if person["id"] == person_id:
                 return
-            else:
-                person = {
-                            "id": person_id,
-                            "gender": gender,
-                            "hat": hat,
-                            "bag": bag,
-                            "trajectory": trajectory
-                        }
-                self.people.append(person)
+        person = {
+                    "id": person_id,
+                    "gender": gender,
+                    "hat": hat,
+                    "bag": bag,
+                    "trajectory": trajectory
+                }
+        self.people.append(person)
 
     def set_trajectory(self, person_id, trajectory):
         """
