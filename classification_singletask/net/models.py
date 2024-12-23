@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 from torchvision import models
-from utils import ClassBlock
+from .utils import ClassBlock
 from torchvision.models import ResNet50_Weights, ResNet34_Weights, DenseNet121_Weights
 
 class Backbone_nFC(nn.Module):
