@@ -55,5 +55,10 @@
         "downblue",
         "downgreen",
         "downbrown"
+    ],
+    "custom": [
+        "gender",
+        "backpack",
+        "hat"
     ]
 }

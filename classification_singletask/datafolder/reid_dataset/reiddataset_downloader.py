@@ -5,19 +5,10 @@ warnings.filterwarnings('ignore','.*conversion.*')
 import os
 import zipfile
 import shutil
-import requests
-import h5py
-import numpy as np
-from PIL import Image
 import argparse
 from .gdrive_downloader import gdrive_downloader
-from .cuhk03_to_image import cuhk03_to_image
 
 dataset = {
-    'CUHK01': '153IzD3vyQ0PqxxanQRlP9l89F1S5Vr47',
-    'CUHK02': '0B2FnquNgAXoneE5YamFXY3NjYWM',
-    'CUHK03': '1BO4G9gbOTJgtYIB0VNyHQpZb8Lcn-05m',
-    'VIPeR':  '0B2FnquNgAXonZzJPQUtrcWJWbWc',
     'Market1501': '0B2FnquNgAXonU3RTcE1jQlZ3X0E',
     'Market1501Attribute' : '1YMgni5oz-RPkyKHzOKnYRR2H3IRKdsHO',
     'DukeMTMC': '1qtFGJQ6eFu66Tt7WG85KBxtACSE8RBZ0',

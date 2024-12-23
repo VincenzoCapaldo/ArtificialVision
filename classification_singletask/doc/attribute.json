@@ -373,5 +373,29 @@
                 "white"
             ]
         ]
+    },
+    "custom": {
+        "gender": [
+            "gender",
+            [
+                "male",
+                "female"
+            ]
+        ],
+        "bag": [
+            "carrying bag",
+            [
+                "no",
+                "yes"
+            ]
+        ],
+        "hat": [
+            "wearing hat",
+            [
+                "no",
+                "yes"
+            ]
+        ]
     }
+
 }
