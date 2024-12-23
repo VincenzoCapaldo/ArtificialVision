@@ -11,6 +11,18 @@ import gui_utils as gui
 
 def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio.mp4", show=False, real_time=True, tracker="confs/botsort.yaml"):
 
+    """
+    Main function to perform people tracking in a video using a pre-trained YOLO model.
+
+    Parameters:
+    device: Specifies the device to run the model on (e.g. 'cuda' for GPU or 'cpu').
+    model_path: Path to the YOLO model file.
+    video_path: Path to the video to analyze.
+    show: Flag to display the results in real time.
+    real_time: Flag to synchronize the processing in real time.
+    tracker: Path to the tracker configuration file.
+    """
+
     # Load the YOLO model
     model = YOLO(model_path).to(device)
 
@@ -24,13 +36,14 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
     # Open the video file
     cap = cv2.VideoCapture(video_path)
     if real_time:
+    # Calculating the time per frame, needed for real time constraint
         fps = cap.get(cv2.CAP_PROP_FPS)
         ms_per_frame = 1/fps
-    # Store the track history
+    # Store the track history (for each ID, its trajectory)
     track_history = defaultdict(lambda: [])
     first_frame = True
 
-    lista_attraversamenti = {}
+    lista_attraversamenti = {}  # Stores the lines traversed by each ID
 
     # Loop through the video frames
     while cap.isOpened():
@@ -75,16 +88,18 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
 
 
                 # FINE DISEGNI, INIZIO DISEGNI TRACCE
+        # Gestione delle traiettorie e disegno delle linee di tracciamento
                 track = track_history[track_id]
-                track.append((float(x), float(y+h/2)))  # x, y center point
-                if len(track) > 30:  # retain 90 tracks for 90 frames
+                trajectory_point = 30  # Maintain up to 30 tracking points
+                track.append((float(x), float(y+h/2)))  # x, y center point ''' (lower center of the bounding box) '''
+                if len(track) > trajectory_point:  # retain 90 tracks for 90 frames
                     track.pop(0)
 
                 # Draw the tracking lines
                 points = np.hstack(track).astype(np.int32).reshape((-1, 1, 2))
                 cv2.polylines(annotated_frame, [points], isClosed=False, color=(230, 230, 230), thickness=10)
 
-                #
+                #checking crossed lines
                 crossed_line_id = check_crossed_line(track, lines_info)
                 if(len(crossed_line_id)!=0):
                     if not(track_id in lista_attraversamenti):
@@ -104,7 +119,7 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
         else:
             # Break the loop if the end of the video is reached
             break
-
+        # Real-time synchronization management
         end_time = time.time()
         if real_time:
             elapsed_time = end_time - start_time
