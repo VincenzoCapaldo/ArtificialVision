@@ -4,9 +4,13 @@ import numpy as np
 from ultralytics import YOLO
 
 from OutputWriter import OutputWriter
+from classification_singletask.bounding_box_screen import screen_save
 from lines_utils import get_lines_info, check_crossed_line
 import time
 import gui_utils as gui
+
+
+
 
 
 def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio.mp4", show=False, real_time=True, tracker="confs/botsort.yaml"):
@@ -44,7 +48,7 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
     first_frame = True
 
     lista_attraversamenti = {}  # Stores the lines traversed by each ID
-
+    frame_count = 0
     # Loop through the video frames
     while cap.isOpened():
         # Read a frame from the video
@@ -85,7 +89,10 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                 gui.add_info_scene(annotated_frame, text)
                 # Draw lines
                 annotated_frame = gui.draw_lines_on_frame(annotated_frame, lines_info)
-
+                # share bounding box
+                if(frame_count == 30):
+                    screen_save(frame,int(x),int(y),int(w),int(h),track_id)
+                    print("SCREEN")
 
                 # FINE DISEGNI, INIZIO DISEGNI TRACCE
         # Gestione delle traiettorie e disegno delle linee di tracciamento
@@ -108,7 +115,7 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
 
                 # Add a new person
                 output_writer.add_person(track_id)
-
+            frame_count += 1
             # Display the annotated frame
             if show:
                 cv2.imshow("YOLO Tracking", annotated_frame)
@@ -129,6 +136,8 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                 cap.read()
                 d2 -= 1
             first_frame = False
+
+
 
     # Add trajectory for all the people
     for id in lista_attraversamenti:
