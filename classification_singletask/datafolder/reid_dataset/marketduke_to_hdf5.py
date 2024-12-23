@@ -2,7 +2,7 @@ import warnings
 warnings.filterwarnings('ignore','.*conversion.*')
 
 import os
-import h5py
+#import h5py
 import numpy as np
 from PIL import  Image
 from .import_MarketDuke import import_MarketDuke

@@ -4,7 +4,7 @@ import scipy.io
 import torch
 import numpy as np
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from datafolder.folder import Test_Dataset
+from datafolder.folder import Test_Dataset, Test_Custom_Dataset
 from net import get_model
 
 
@@ -26,8 +26,8 @@ dataset_dict = {
 # Argument
 # ---------
 parser = argparse.ArgumentParser(description='Testing')
-parser.add_argument('--data-path', default='/path/to/dataset', type=str, help='path to the dataset')
-parser.add_argument('--dataset', default='market', type=str, help='dataset')
+parser.add_argument('--data-path', default='./classification_singletask/dataset', type=str, help='path to the dataset')
+parser.add_argument('--dataset', default='custom', type=str, help='dataset')
 parser.add_argument('--backbone', default='resnet50', type=str, help='model')
 parser.add_argument('--batch-size', default=50, type=int, help='batch size')
 parser.add_argument('--num-epoch', default=60, type=int, help='num of epoch')
@@ -70,6 +70,11 @@ def get_dataloader():
                   for x in ['gallery', 'query']}
     return dataloaders
 
+def get_dataloader_custom():
+    image_datasets = Test_Custom_Dataset(data_dir)
+    dataloader = torch.utils.data.DataLoader(image_datasets, batch_size=args.batch_size,
+                                                 shuffle=True, num_workers=args.num_workers)
+    return dataloader
 
 def check_metric_vaild(y_pred, y_true):
     if y_true.min() == y_true.max() == 0:   # precision
@@ -83,7 +88,10 @@ def check_metric_vaild(y_pred, y_true):
 # Load Data
 # ---------
 # Note that we only perform evaluation on gallery set.
-test_loader = get_dataloader()['gallery']
+if args.dataset == 'custom':
+    test_loader = get_dataloader_custom()
+else:
+    test_loader = get_dataloader()['gallery']
 
 attribute_list = test_loader.dataset.labels()
 num_label = len(attribute_list)
