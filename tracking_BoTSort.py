@@ -13,7 +13,7 @@ import gui_utils as gui
 
 
 
-def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio.mp4", show=False, real_time=True, tracker="confs/botsort.yaml"):
+def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio.mp4", show=False, real_time=True, tracker="confs/botsort.yaml"):
 
     """
     Main function to perform people tracking in a video using a pre-trained YOLO model.
@@ -49,6 +49,7 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
 
     lista_attraversamenti = {}  # Stores the lines traversed by each ID
     frame_count = 0
+
     # Loop through the video frames
     while cap.isOpened():
         # Read a frame from the video
@@ -75,7 +76,6 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                 bottom_right_corner = (x2, y2)
 
                 # general information of the scene to display
-                # implementare il conteggio degli attraversamenti
                 text = []
                 text.append(f"Total People: {len(track_ids)}")
                 for line in lines_info:
@@ -90,8 +90,9 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                 # Draw lines
                 annotated_frame = gui.draw_lines_on_frame(annotated_frame, lines_info)
                 # share bounding box
-                if(frame_count == 30):
-                    screen_save(frame,int(x),int(y),int(w),int(h),track_id)
+
+                if(frame_count == 10):
+                    screen_save(frame,top_left_corner,bottom_right_corner,track_id)
                     print("SCREEN")
 
                 # FINE DISEGNI, INIZIO DISEGNI TRACCE
