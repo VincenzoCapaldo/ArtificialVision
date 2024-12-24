@@ -59,7 +59,7 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
         start_time = end_read_time = time.time()
         if success:
             # Run YOLO11 tracking on the frame, persisting tracks between frames
-            results = model.track(frame, persist=True, tracker=tracker, classes=[0])
+            results = model.track(frame, persist=True, tracker=tracker)
 
             # Get the boxes and track IDs
             boxes = results[0].boxes.xywh.cpu()
@@ -91,12 +91,8 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
                 annotated_frame = gui.draw_lines_on_frame(annotated_frame, lines_info)
                 # share bounding box
 
-                if(frame_count == 10):
-                    screen_save(frame,top_left_corner,bottom_right_corner,track_id)
-                    print("SCREEN")
-
                 # FINE DISEGNI, INIZIO DISEGNI TRACCE
-        # Gestione delle traiettorie e disegno delle linee di tracciamento
+                # Gestione delle traiettorie e disegno delle linee di tracciamento
                 track = track_history[track_id]
                 trajectory_point = 30  # Maintain up to 30 tracking points
                 track.append((float(x), float(y+h/2)))  # x, y center point ''' (lower center of the bounding box) '''

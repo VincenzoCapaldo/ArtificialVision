@@ -50,25 +50,25 @@ def real_to_pixel(x_real, y_real, config_file="confs/camera_config.json"):
     s_h = config['sensor_height']  # altezza sensore
 
     # Matrici di rotazione
-    R_pitch = np.array([[1, 0, 0],
-                        [0, cos(pitch), -sin(pitch)],
-                        [0, sin(pitch), cos(pitch)]])
-
-    R_roll = np.array([[cos(roll), 0, sin(roll)],
-                       [0, 1, 0],
-                       [-sin(roll), 0, cos(roll)]])
-
-    R_yaw = np.array([[cos(yaw), -sin(yaw), 0],
-                      [sin(yaw), cos(yaw), 0],
+    R_yaw = np.array([[cos(yaw), sin(yaw), 0],
+                      [-sin(yaw), cos(yaw), 0],
                       [0, 0, 1]])
 
+    R_roll = np.array([[cos(roll), 0, -sin(roll)],
+                       [0, 1, 0],
+                       [sin(roll), 0, cos(roll)]])
+
+    R_pitch = np.array([[1, 0, 0],
+                        [0, cos(pitch), sin(pitch)],
+                        [0, -sin(pitch), cos(pitch)]])
+
     # Matrize di rotazione totale
-    R = R_yaw @ R_roll @ R_pitch
+    R = R_roll @ R_pitch @ R_yaw
 
     # Trasformazione delle coordinate reali nel sistema della fotocamera
     real_coordinates = np.vstack((x_real, y_real, np.zeros_like(x_real)))  # Aggiungi z=0 per i punti
     camera_position = np.array([xc, yc, zc]).reshape(3, 1)
-    translated_coordinates = real_coordinates + camera_position  # Traslazione per portare il punto nell'origine della fotocamera
+    translated_coordinates = real_coordinates - camera_position  # Traslazione per portare il punto nell'origine della fotocamera
 
     # Applicazione della rotazione
     camera_coordinates = R @ translated_coordinates  # Trasformazione al sistema di coordinate della fotocamera
@@ -84,7 +84,7 @@ def real_to_pixel(x_real, y_real, config_file="confs/camera_config.json"):
 
     # Calcolare le coordinate in pixel (u, v)
     u = U / 2 + f_x * dx / dy  # Proiezione in x
-    v = V / 2 + f_y * dz / dy  # Proiezione in y
+    v = V / 2 - (f_x * dz / dy)  # Proiezione in y
 
     for i in range(len(u)):
         u[i], v[i] = int(u[i]), int(v[i])
