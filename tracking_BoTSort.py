@@ -2,15 +2,10 @@ from collections import defaultdict
 import cv2
 import numpy as np
 from ultralytics import YOLO
-
 from OutputWriter import OutputWriter
-from classification_singletask.bounding_box_screen import screen_save
 from lines_utils import get_lines_info, check_crossed_line
 import time
 import gui_utils as gui
-
-
-
 
 
 def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio.mp4", show=False, real_time=True, tracker="confs/botsort.yaml"):
@@ -32,7 +27,6 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
 
     # Load lines info
     lines_info = get_lines_info()
-    number_of_lines = len(lines_info)
 
     # Create an output-writer object to write on a json file the results
     output_writer = OutputWriter()
@@ -59,7 +53,7 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
         start_time = end_read_time = time.time()
         if success:
             # Run YOLO11 tracking on the frame, persisting tracks between frames
-            results = model.track(frame, persist=True, tracker=tracker)
+            results = model.track(frame, persist=True, tracker=tracker, classes=[0])
 
             # Get the boxes and track IDs
             boxes = results[0].boxes.xywh.cpu()
