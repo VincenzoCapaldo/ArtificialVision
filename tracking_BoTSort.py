@@ -104,6 +104,9 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
                         lista_attraversamenti[track_id] = []
                     lista_attraversamenti[track_id].extend(crossed_line_id)
 
+                if frame_count == 30:
+                    gui.screen_save(frame, top_left_corner, bottom_right_corner,track_id)
+
                 # Add a new person
                 output_writer.add_person(track_id)
             frame_count += 1
