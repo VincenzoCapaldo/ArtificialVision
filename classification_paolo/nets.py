@@ -1,6 +1,23 @@
 import torch.nn as nn
 from torchvision import models
 
+# class AttentionModule(nn.Module):
+#     def __init__(self, input_dim):
+#         super(AttentionModule, self).__init__()
+#         self.attention = nn.Sequential(
+#             nn.Linear(input_dim, input_dim // 2),
+#             nn.ReLU(),
+#             nn.Linear(input_dim // 2, 1),
+#             nn.Sigmoid()
+#         )
+#
+#     def forward(self, x):
+#         # Calcola il peso di attenzione
+#         attention_weights = self.attention(x)
+#         # Applica il peso di attenzione
+#         return x * attention_weights
+
+
 def create_classification_head(input_features):
     """Crea una testa di classificazione con layer fully connected personalizzati."""
     return nn.Sequential(
@@ -36,10 +53,25 @@ class ClassificationModel(nn.Module):
 
         # Head: layer fully connected personalizzati
         num_ftrs = self.backbone.fc.in_features
+        #self.attention = AttentionModule(num_ftrs)  # Modulo di attenzione
         self.head = create_classification_head(num_ftrs)
+
+        # Sostituisci il layer finale del backbone con un placeholder (per forward pass)
+        #self.backbone.fc = nn.Identity()
 
         # Sostituisci il layer finale del backbone con la testa personalizzata
         self.backbone.fc = self.head
 
     def forward(self, x):
+        # Estrazione delle caratteristiche dalla backbone
+        #features = self.backbone(x)
+
+        # Applica il modulo di attenzione
+        #attended_features = self.attention(features)
+
+        # Passa attraverso la testa di classificazione
+        #output = self.head(attended_features)
+
+        #return output
+
         return self.backbone(x)
