@@ -1,3 +1,5 @@
+from collections import Counter
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -181,7 +183,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
         # Salva il miglior modello
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            torch.save(model.state_dict(), 'best_gender_model_weighted.pth')
+            torch.save(model.state_dict(), 'best_gender_model.pth')
             print("Miglior modello salvato!")
 
         # Aggiorna lo scheduler
