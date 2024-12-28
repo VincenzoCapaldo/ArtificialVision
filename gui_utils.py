@@ -145,3 +145,11 @@ def screen_save(frame,top_left_corner,bottom_right_corner,id):
     # Salva lo screenshot della bounding box
     output_path = f"./screen/bounding_box_screenshot{id}.jpg"
     cv.imwrite(output_path, cropped_image)
+
+
+def screen(frame, top_left_corner, bottom_right_corner):
+    x1, y1 = top_left_corner[0], top_left_corner[1]
+    x2, y2 = bottom_right_corner[0], bottom_right_corner[1]
+    cropped_image = frame[y1:y2, x1:x2]
+    # restituisce lo screenshot della bounding box
+    return cropped_image
