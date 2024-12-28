@@ -15,7 +15,7 @@ img_width, img_height = 224, 224
 batch_size = 16
 epochs = 5
 learning_rate = 0.0005
-num_workers = 4
+num_workers = 0
 
 # Trasformazioni per il pre-processing delle immagini
 transform = transforms.Compose([
@@ -204,7 +204,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
         # Salva il miglior modello
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            torch.save(model.state_dict(), 'best_gender_model.pth')
+            torch.save(model.state_dict(), './classification_paolo/best_gender_model.pth')
             print("Miglior modello salvato!")
 
         # Aggiorna lo scheduler

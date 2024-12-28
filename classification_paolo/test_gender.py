@@ -86,7 +86,7 @@ if __name__ == "__main__":
 
     # Caricamento del dataset e DataLoader
     dataset = GenderDataset(image_dir, label_file, transform)
-    dataloader = DataLoader(dataset, batch_size=16, shuffle=False, num_workers=4)
+    dataloader = DataLoader(dataset, batch_size=16, shuffle=False, num_workers=0)
 
     # Modello caricato
     model = models.resnet18(weights=None)  # Carichiamo una ResNet senza pesi pre-addestrati
@@ -102,7 +102,7 @@ if __name__ == "__main__":
         nn.Dropout(0.5),
         nn.Linear(128, 1)
     )
-    model_path = 'best_gender_model.pth'  # Sostituisci con il percorso del modello salvato
+    model_path = './classification_paolo/best_gender_model.pth'  # Sostituisci con il percorso del modello salvato
     model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
     model.eval()  # Imposta il modello in modalità valutazione
 
