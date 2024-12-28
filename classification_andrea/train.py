@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 from torch.utils.data import DataLoader, WeightedRandomSampler
 import argparse
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from tqdm import tqdm
 from dataset import TrainDataset, ValidationDataset
 from nets import PARMultiTaskNet
 import torch
@@ -80,11 +81,11 @@ def masked_loss(criterion, outputs, labels, mask):
     return criterion(masked_outputs, masked_labels).mean()
 
 
-def train_one_epoch(model, dataloader, criterion, optimizer, device):
+def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch):
     model.train()
     running_loss = 0.0
 
-    for images, labels in dataloader:
+    for images, labels in tqdm(dataloader, desc=f"Training Epoch {epoch + 1}"):
         images, labels = images.to(device), labels.to(device)
         masks = labels >= 0
 
@@ -235,7 +236,7 @@ def main():
 
     print("Inizio train...")
     for epoch in range(args.epochs):
-        train_loss = train_one_epoch(model, train_loader, criterion, optimizer, device)
+        train_loss = train_one_epoch(model, train_loader, criterion, optimizer, device, epoch)
         val_loss, val_metrics = validate(model, val_loader, criterion, device)
         metrics_history.append(val_metrics)
         loss_history.append(train_loss)

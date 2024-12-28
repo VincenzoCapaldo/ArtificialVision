@@ -14,7 +14,7 @@ img_width, img_height = 224, 224
 batch_size = 32
 epochs = 20  # Aumentato per permettere una migliore convergenza
 learning_rate = 0.0005
-num_workers = 4
+num_workers = 0
 
 # Trasformazioni per il pre-processing delle immagini
 transform = transforms.Compose([
@@ -37,7 +37,7 @@ class GenderDataset(Dataset):
             for line in f:
                 parts = line.strip().split(',')
                 filename = parts[0]
-                gender = int(parts[3])
+                gender = int(parts[4])
 
                 if gender in [0, 1]:
                     image_path = os.path.join(self.image_dir, filename)
@@ -178,7 +178,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
         # Salva il miglior modello
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            torch.save(model.state_dict(), 'best_gender_model.pth')
+            torch.save(model.state_dict(), '../best_bag_model.pth')
             print("Miglior modello salvato!")
 
         # Aggiorna lo scheduler
