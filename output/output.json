@@ -1,0 +1,46 @@
+{
+    "people": [
+        {
+            "id": 1,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 2,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 3,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 4,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 5,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 6,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        }
+    ]
+}
