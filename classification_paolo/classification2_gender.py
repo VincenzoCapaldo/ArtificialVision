@@ -5,16 +5,15 @@ import torch.nn as nn
 import torch.optim as optim
 from torchvision import models, transforms
 from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
+from sklearn.metrics import precision_score, recall_score, f1_score
 from PIL import Image
 import os
-import time
 from tqdm import tqdm
-import random
 
 # Parametri
 img_width, img_height = 224, 224
 batch_size = 16
-epochs = 10
+epochs = 5
 learning_rate = 0.0005
 num_workers = 4
 
@@ -137,6 +136,9 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
         correct_preds = 0
         total_preds = 0
 
+        y_true_train = []
+        y_pred_train = []
+
         print(f"Epoch {epoch + 1}/{num_epochs}")
 
         # Training
@@ -153,16 +155,27 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
             correct_preds += (preds == labels).sum().item()
             total_preds += labels.size(0)
 
+            # Salva predizioni e verità per metriche
+            y_true_train.extend(labels.cpu().numpy())
+            y_pred_train.extend(preds.cpu().numpy())
+
         epoch_loss = running_loss / len(train_loader)
         epoch_accuracy = correct_preds / total_preds
 
-        print(f"Train Loss: {epoch_loss:.4f}, Train Accuracy: {epoch_accuracy:.4f}")
+        train_precision = precision_score(y_true_train, y_pred_train, zero_division=0)
+        train_recall = recall_score(y_true_train, y_pred_train, zero_division=0)
+        train_f1 = f1_score(y_true_train, y_pred_train, zero_division=0)
+
+        print(f"Train Loss: {epoch_loss:.4f}, Train Accuracy: {epoch_accuracy:.4f}, Precision: {train_precision:.4f}, Recall: {train_recall:.4f}, F1-Score: {train_f1:.4f}")
 
         # Validazione
         model.eval()
         val_loss = 0.0
         val_correct_preds = 0
         val_total_preds = 0
+
+        y_true_val = []
+        y_pred_val = []
 
         with torch.no_grad():
             for inputs, labels in tqdm(val_loader, desc=f"Validating Epoch {epoch+1}"):
@@ -175,10 +188,18 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
                 val_correct_preds += (preds == labels).sum().item()
                 val_total_preds += labels.size(0)
 
+                # Salva predizioni e verità per metriche
+                y_true_val.extend(labels.cpu().numpy())
+                y_pred_val.extend(preds.cpu().numpy())
+
         val_loss /= len(val_loader)
         val_accuracy = val_correct_preds / val_total_preds
 
-        print(f"Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
+        val_precision = precision_score(y_true_val, y_pred_val, zero_division=0)
+        val_recall = recall_score(y_true_val, y_pred_val, zero_division=0)
+        val_f1 = f1_score(y_true_val, y_pred_val, zero_division=0)
+
+        print(f"Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}, Precision: {val_precision:.4f}, Recall: {val_recall:.4f}, F1-Score: {val_f1:.4f}")
 
         # Salva il miglior modello
         if val_loss < best_val_loss:

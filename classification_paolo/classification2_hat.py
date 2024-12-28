@@ -1,9 +1,11 @@
 from collections import Counter
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torchvision import models, transforms
 from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
+from sklearn.metrics import precision_score, recall_score, f1_score
 from PIL import Image
 import os
 from tqdm import tqdm
@@ -11,7 +13,7 @@ from tqdm import tqdm
 # Parametri
 img_width, img_height = 224, 224
 batch_size = 16
-epochs = 10
+epochs = 5
 learning_rate = 0.0005
 num_workers = 4
 
@@ -24,9 +26,8 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
-
 # Dataset personalizzato
-class HatDataset(Dataset):
+class GenderDataset(Dataset):
     def __init__(self, image_dir, label_file, transform=None):
         self.image_dir = image_dir
         self.label_file = label_file
@@ -64,20 +65,19 @@ class HatDataset(Dataset):
 
         return image, label
 
-
 # Percorsi dei dati
 data_dirs = {
-    "train": "./dataset/training_set",
-    "val": "./dataset/training_set"
+    "train": "dataset/training_set",
+    "val": "dataset/training_set"
 }
 label_files = {
-    "train": "./dataset/train_split.txt",
-    "val": "./dataset/val_split.txt"
+    "train": "dataset/train_split.txt",
+    "val": "dataset/val_split.txt"
 }
 
 # Dataset
-train_dataset = HatDataset(data_dirs['train'], label_files['train'], transform)
-val_dataset = HatDataset(data_dirs['val'], label_files['val'], transform)
+train_dataset = GenderDataset(data_dirs['train'], label_files['train'], transform)
+val_dataset = GenderDataset(data_dirs['val'], label_files['val'], transform)
 
 # Creazione di pesi per il sampler
 labels = [label for _, label in train_dataset.image_labels]
@@ -92,8 +92,7 @@ sample_weights = [class_weights[label] for label in labels]
 sampler = WeightedRandomSampler(weights=sample_weights, num_samples=len(sample_weights), replacement=True)
 
 # DataLoader
-train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers,
-                          drop_last=True)
+train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers, drop_last=True)
 val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers, drop_last=True)
 
 # Modello
@@ -128,7 +127,6 @@ criterion = nn.BCEWithLogitsLoss()
 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=learning_rate)
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.5)
 
-
 # Funzione di training
 def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler, num_epochs):
     best_val_loss = float('inf')
@@ -138,10 +136,13 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
         correct_preds = 0
         total_preds = 0
 
+        y_true_train = []
+        y_pred_train = []
+
         print(f"Epoch {epoch + 1}/{num_epochs}")
 
         # Training
-        for inputs, labels in tqdm(train_loader, desc=f"Training Epoch {epoch + 1}"):
+        for inputs, labels in tqdm(train_loader, desc=f"Training Epoch {epoch+1}"):
             inputs, labels = inputs.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = model(inputs).squeeze()
@@ -154,10 +155,18 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
             correct_preds += (preds == labels).sum().item()
             total_preds += labels.size(0)
 
+            # Salva predizioni e verità per metriche
+            y_true_train.extend(labels.cpu().numpy())
+            y_pred_train.extend(preds.cpu().numpy())
+
         epoch_loss = running_loss / len(train_loader)
         epoch_accuracy = correct_preds / total_preds
 
-        print(f"Train Loss: {epoch_loss:.4f}, Train Accuracy: {epoch_accuracy:.4f}")
+        train_precision = precision_score(y_true_train, y_pred_train, zero_division=0)
+        train_recall = recall_score(y_true_train, y_pred_train, zero_division=0)
+        train_f1 = f1_score(y_true_train, y_pred_train, zero_division=0)
+
+        print(f"Train Loss: {epoch_loss:.4f}, Train Accuracy: {epoch_accuracy:.4f}, Precision: {train_precision:.4f}, Recall: {train_recall:.4f}, F1-Score: {train_f1:.4f}")
 
         # Validazione
         model.eval()
@@ -165,8 +174,11 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
         val_correct_preds = 0
         val_total_preds = 0
 
+        y_true_val = []
+        y_pred_val = []
+
         with torch.no_grad():
-            for inputs, labels in tqdm(val_loader, desc=f"Validating Epoch {epoch + 1}"):
+            for inputs, labels in tqdm(val_loader, desc=f"Validating Epoch {epoch+1}"):
                 inputs, labels = inputs.to(device), labels.to(device)
                 outputs = model(inputs).squeeze()
                 loss = criterion(outputs, labels.float())
@@ -176,20 +188,27 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
                 val_correct_preds += (preds == labels).sum().item()
                 val_total_preds += labels.size(0)
 
+                # Salva predizioni e verità per metriche
+                y_true_val.extend(labels.cpu().numpy())
+                y_pred_val.extend(preds.cpu().numpy())
+
         val_loss /= len(val_loader)
         val_accuracy = val_correct_preds / val_total_preds
 
-        print(f"Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
+        val_precision = precision_score(y_true_val, y_pred_val, zero_division=0)
+        val_recall = recall_score(y_true_val, y_pred_val, zero_division=0)
+        val_f1 = f1_score(y_true_val, y_pred_val, zero_division=0)
+
+        print(f"Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}, Precision: {val_precision:.4f}, Recall: {val_recall:.4f}, F1-Score: {val_f1:.4f}")
 
         # Salva il miglior modello
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            torch.save(model.state_dict(), 'best_hat_model_weighted.pth')
+            torch.save(model.state_dict(), 'best_hat_model.pth')
             print("Miglior modello salvato!")
 
         # Aggiorna lo scheduler
         scheduler.step()
-
 
 # Esegui il training
 if __name__ == '__main__':
