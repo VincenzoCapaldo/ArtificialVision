@@ -3,6 +3,7 @@ from collections import Counter
 import torch.nn as nn
 import torch.optim as optim
 from matplotlib import pyplot as plt
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, WeightedRandomSampler
 import argparse
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
@@ -184,15 +185,15 @@ def main():
     parser.add_argument('--data_dir', type=str, default='./dataset', help='Path al dataset')
     parser.add_argument('--batch_size', type=int, default=16, help='Batch size')
     parser.add_argument('--weight_decay', type=float, default=0.0001, help='Weight decay (L2 regularization)')
-    parser.add_argument('--epochs', type=int, default=50, help='Numero di epoche')
+    parser.add_argument('--epochs', type=int, default=25, help='Numero di epoche')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
     parser.add_argument('--momentum', type=float, default=0.9, help='Momentum')
     parser.add_argument('--device', type=str, default='cuda', help='Device: cuda o cpu')
     parser.add_argument('--checkpoint_dir', type=str, default='./classification_andrea/checkpoints',
                         help='Directory dei checkpoint')
     parser.add_argument('--resume_checkpoint', type=bool, default=False)
-    parser.add_argument('--patience', type=int, default=6)
-    parser.add_argument('--backbone', type=str, default='resnet18', help='Backbone name: resnet50 o resnet18')
+    parser.add_argument('--patience', type=int, default=7)
+    parser.add_argument('--backbone', type=str, default='resnet50', help='Backbone name: resnet50 o resnet18')
 
     args = parser.parse_args()
 
@@ -229,8 +230,8 @@ def main():
         {'params': model.hat_head.parameters()}  # Testa hat
     ], lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
-    # Aggiungi lo scheduler
-    # scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=3, verbose=True)
+    # Scheduler
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=3, verbose=True)
 
     best_val_loss = float('inf')
     patience_counter = 0
@@ -251,8 +252,8 @@ def main():
 
             model.load_state_dict(checkpoint['model_state'])
             optimizer.load_state_dict(checkpoint['optimizer_state'])
-            #if checkpoint['scheduler_state'] is not None:
-                #scheduler.load_state_dict(checkpoint['scheduler_state'])
+            if checkpoint['scheduler_state'] is not None:
+                scheduler.load_state_dict(checkpoint['scheduler_state'])
             start_epoch = checkpoint['epoch']
             best_val_loss = checkpoint['best_val_loss']
         else:
@@ -277,7 +278,7 @@ def main():
         plot_metrics(metrics_history, args.checkpoint_dir, epoch + 1, loss_history, val_loss_history)
 
         # Passa la perdita di validazione allo scheduler
-        #scheduler.step(val_loss)
+        scheduler.step(val_loss)
 
         if val_loss < best_val_loss:
             best_val_loss = val_loss
@@ -285,7 +286,7 @@ def main():
                 'epoch': epoch+1,
                 'model_state': model.state_dict(),
                 'optimizer_state': optimizer.state_dict(),
-                #'scheduler_state': scheduler.state_dict(),
+                'scheduler_state': scheduler.state_dict(),
                 'best_val_loss': best_val_loss,
             }
             checkpoint_path = os.path.join(args.checkpoint_dir, f"checkpoint_epoch_{epoch + 1}.pth")
