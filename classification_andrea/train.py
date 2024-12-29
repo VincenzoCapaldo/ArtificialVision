@@ -178,6 +178,7 @@ def plot_metrics(metrics_history, output_dir, epoch, loss_history, val_loss_hist
     plt.close()
 
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_dir', type=str, default='./dataset', help='Path al dataset')
