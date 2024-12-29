@@ -192,7 +192,7 @@ def main():
                         help='Directory dei checkpoint')
     parser.add_argument('--resume_checkpoint', type=bool, default=False)
     parser.add_argument('--patience', type=int, default=6)
-    parser.add_argument('--backbone', type=str, default='resnet18modifiche tra', help='Backbone name: resnet50 o resnet18')
+    parser.add_argument('--backbone', type=str, default='resnet18', help='Backbone name: resnet50 o resnet18')
 
     args = parser.parse_args()
 
@@ -230,7 +230,7 @@ def main():
     ], lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
     # Aggiungi lo scheduler
-    #scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=3, verbose=True)
+    # scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=3, verbose=True)
 
     best_val_loss = float('inf')
     patience_counter = 0
@@ -238,8 +238,31 @@ def main():
     loss_history = []
     val_loss_history = []
 
+    # Riprende dal checkpoint
+    if args.resume_checkpoint:
+        checkpoint_files = [f for f in os.listdir(args.checkpoint_dir) if f.endswith(".pth")]
+        if checkpoint_files:
+            latest_checkpoint = max(
+                checkpoint_files, key=lambda f: os.path.getctime(os.path.join(args.checkpoint_dir, f))
+            )
+            checkpoint_path = os.path.join(args.checkpoint_dir, latest_checkpoint)
+            print(f"Caricamento del modello dal checkpoint: {checkpoint_path}")
+            checkpoint = torch.load(checkpoint_path, map_location=device)
+
+            model.load_state_dict(checkpoint['model_state'])
+            optimizer.load_state_dict(checkpoint['optimizer_state'])
+            #if checkpoint['scheduler_state'] is not None:
+                #scheduler.load_state_dict(checkpoint['scheduler_state'])
+            start_epoch = checkpoint['epoch']
+            best_val_loss = checkpoint['best_val_loss']
+        else:
+            print("Nessun checkpoint trovato. Avvio da zero.")
+            start_epoch = 0
+    else:
+        start_epoch = 0
+
     print("Inizio train...")
-    for epoch in range(args.epochs):
+    for epoch in range(start_epoch, args.epochs):
         train_loss = train_one_epoch(model, train_loader, criterion, optimizer, device, epoch)
         val_loss, val_metrics = validate(model, val_loader, criterion, device, epoch)
         metrics_history.append(val_metrics)
@@ -258,8 +281,15 @@ def main():
 
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            checkpoint_path = os.path.join(args.checkpoint_dir, f"best_model_epoch_{epoch + 1}.pth")
-            torch.save(model.state_dict(), checkpoint_path)
+            checkpoint = {
+                'epoch': epoch+1,
+                'model_state': model.state_dict(),
+                'optimizer_state': optimizer.state_dict(),
+                #'scheduler_state': scheduler.state_dict(),
+                'best_val_loss': best_val_loss,
+            }
+            checkpoint_path = os.path.join(args.checkpoint_dir, f"checkpoint_epoch_{epoch + 1}.pth")
+            torch.save(checkpoint, checkpoint_path)
             print(f"Salvato il modello migliore in {checkpoint_path}")
         else:
             patience_counter += 1
