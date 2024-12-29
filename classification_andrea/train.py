@@ -104,7 +104,7 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch):
     return running_loss / len(dataloader)
 
 
-def validate(model, dataloader, criterion, device):
+def validate(model, dataloader, criterion, device, epoch):
     model.eval()
     running_loss = 0.0
 
@@ -113,7 +113,7 @@ def validate(model, dataloader, criterion, device):
     all_predictions = {"gender": [], "bag": [], "hat": []}
 
     with torch.no_grad():
-        for images, labels in dataloader:
+        for images, labels in tqdm(dataloader, desc=f"Validation Epoch {epoch + 1}"):
             images, labels = images.to(device), labels.to(device)
 
             # Crea maschere per ogni task (1 dove label >= 0, 0 altrove)
@@ -181,17 +181,17 @@ def plot_metrics(metrics_history, output_dir, epoch, loss_history, val_loss_hist
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_dir', type=str, default='./dataset', help='Path al dataset')
-    parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
+    parser.add_argument('--batch_size', type=int, default=16, help='Batch size')
     parser.add_argument('--weight_decay', type=float, default=0.0001, help='Weight decay (L2 regularization)')
     parser.add_argument('--epochs', type=int, default=50, help='Numero di epoche')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
     parser.add_argument('--momentum', type=float, default=0.9, help='Momentum')
     parser.add_argument('--device', type=str, default='cuda', help='Device: cuda o cpu')
-    parser.add_argument('--checkpoint_dir', type=str, default='./checkpoints',
+    parser.add_argument('--checkpoint_dir', type=str, default='./classification_andrea/checkpoints',
                         help='Directory dei checkpoint')
     parser.add_argument('--resume_checkpoint', type=bool, default=False)
-    parser.add_argument('--patience', type=int, default=8)
-    parser.add_argument('--backbone', type=str, default='resnet18', help='Backbone name: resnet50 o resnet18')
+    parser.add_argument('--patience', type=int, default=6)
+    parser.add_argument('--backbone', type=str, default='resnet18modifiche tra', help='Backbone name: resnet50 o resnet18')
 
     args = parser.parse_args()
 
@@ -228,6 +228,9 @@ def main():
         {'params': model.hat_head.parameters()}  # Testa hat
     ], lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
+    # Aggiungi lo scheduler
+    #scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=3, verbose=True)
+
     best_val_loss = float('inf')
     patience_counter = 0
     metrics_history = []
@@ -237,7 +240,7 @@ def main():
     print("Inizio train...")
     for epoch in range(args.epochs):
         train_loss = train_one_epoch(model, train_loader, criterion, optimizer, device, epoch)
-        val_loss, val_metrics = validate(model, val_loader, criterion, device)
+        val_loss, val_metrics = validate(model, val_loader, criterion, device, epoch)
         metrics_history.append(val_metrics)
         loss_history.append(train_loss)
         val_loss_history.append(val_loss)
@@ -248,6 +251,9 @@ def main():
                 f"{task.capitalize()} - Accuracy: {metrics['accuracy']:.4f}, Precision: {metrics['precision']:.4f},Recall: {metrics['recall']:.4f}, F1: {metrics['f1']:.4f}")
 
         plot_metrics(metrics_history, args.checkpoint_dir, epoch + 1, loss_history, val_loss_history)
+
+        # Passa la perdita di validazione allo scheduler
+        #scheduler.step(val_loss)
 
         if val_loss < best_val_loss:
             best_val_loss = val_loss
