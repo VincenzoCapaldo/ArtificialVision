@@ -1,13 +1,47 @@
 import argparse
+import os
 from collections import Counter
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from matplotlib import pyplot as plt
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from sklearn.metrics import precision_score, recall_score, f1_score
 from tqdm import tqdm
 from dataset import CustomDataset
 from nets import ClassificationModel
+
+def plot_metrics(metrics_history, output_dir, epoch, loss_history, val_loss_history):
+    for task in metrics_history[0].keys():
+        plt.figure()
+        for metric in ["accuracy", "precision", "recall", "f1"]:
+            plt.plot(
+                [epoch_metrics[task][metric] for epoch_metrics in metrics_history], label=f"{task}_{metric}"
+            )
+        plt.title(f"{task.capitalize()} Metrics (up to Epoch {epoch})")
+        plt.xlabel("Epoch")
+        plt.ylabel("Value")
+        plt.legend()
+        plt.savefig(os.path.join(output_dir, f"{task}_metrics.png"))
+        plt.close()
+
+    plt.figure()
+    plt.plot(range(1, len(loss_history) + 1), loss_history, label="Loss")
+    plt.title("Training Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.savefig(os.path.join(output_dir, "train_loss.png"))
+    plt.close()
+
+    plt.figure()
+    plt.plot(range(1, len(val_loss_history) + 1), val_loss_history, label="Loss")
+    plt.title("Validation Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.savefig(os.path.join(output_dir, "val_loss.png"))
+    plt.close()
 
 
 def main():
@@ -89,17 +123,13 @@ def main():
 # Funzione di training
 def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler, num_epochs, device, type, patience):
     best_val_loss = float('inf')
+    metrics_history = []
+    loss_history = []
+    val_loss_history = []
     patience_counter = 0
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
-        correct_preds = 0
-        total_preds = 0
-
-        y_true_train = []
-        y_pred_train = []
-
-        print(f"Epoch {epoch + 1}/{num_epochs}")
 
         # Training
         for inputs, labels in tqdm(train_loader, desc=f"Training Epoch {epoch + 1}"):
@@ -111,30 +141,16 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
             optimizer.step()
 
             running_loss += loss.item()
-            preds = (outputs > 0).float()
-            correct_preds += (preds == labels).sum().item()
-            total_preds += labels.size(0)
-
-            # Salva predizioni e verità per metriche
-            y_true_train.extend(labels.cpu().numpy())
-            y_pred_train.extend(preds.cpu().numpy())
 
         epoch_loss = running_loss / len(train_loader)
-        epoch_accuracy = correct_preds / total_preds
-
-        train_precision = precision_score(y_true_train, y_pred_train, zero_division=0)
-        train_recall = recall_score(y_true_train, y_pred_train, zero_division=0)
-        train_f1 = f1_score(y_true_train, y_pred_train, zero_division=0)
-
-        print(
-            f"Train Loss: {epoch_loss:.4f}, Train Accuracy: {epoch_accuracy:.4f}, Precision: {train_precision:.4f}, Recall: {train_recall:.4f}, F1-Score: {train_f1:.4f}")
+        loss_history.append(epoch_loss)
 
         # Validazione
         model.eval()
         val_loss = 0.0
         val_correct_preds = 0
         val_total_preds = 0
-
+        val_metrics = {}
         y_true_val = []
         y_pred_val = []
 
@@ -145,7 +161,11 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
                 loss = criterion(outputs, labels.float())
 
                 val_loss += loss.item()
-                preds = (outputs > 0).float()
+
+                # Confronta le probabilità con 0.5 per ottenere le predizioni
+                preds = (torch.sigmoid(outputs) > 0.5).int()
+
+                # Calcola l'accuratezza
                 val_correct_preds += (preds == labels).sum().item()
                 val_total_preds += labels.size(0)
 
@@ -154,14 +174,20 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
                 y_pred_val.extend(preds.cpu().numpy())
 
         val_loss /= len(val_loader)
-        val_accuracy = val_correct_preds / val_total_preds
+        val_loss_history.append(val_loss)
 
+        val_accuracy = val_correct_preds / val_total_preds
         val_precision = precision_score(y_true_val, y_pred_val, zero_division=0)
         val_recall = recall_score(y_true_val, y_pred_val, zero_division=0)
         val_f1 = f1_score(y_true_val, y_pred_val, zero_division=0)
+        val_metrics[type] = {"accuracy": val_accuracy, "precision": val_precision, "recall": val_recall, "f1": val_f1}
+        metrics_history.append(val_metrics)
 
+        print(f"Epoch [{epoch + 1}/{num_epochs}] - Train Loss: {epoch_loss:.4f}, Val Loss: {val_loss:.4f}")
         print(
-            f"Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}, Precision: {val_precision:.4f}, Recall: {val_recall:.4f}, F1-Score: {val_f1:.4f}")
+            f"Validation Accuracy: {val_accuracy:.4f}, Precision: {val_precision:.4f}, Recall: {val_recall:.4f}, F1-Score: {val_f1:.4f}")
+
+        plot_metrics(metrics_history, f'./classification_paolo/models', epoch + 1, loss_history, val_loss_history)
 
         # Salva il miglior modello
         if val_loss < best_val_loss:

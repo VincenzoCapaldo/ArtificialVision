@@ -11,7 +11,6 @@ def test_model(model, dataloader, device):
 
     all_labels = {"gender": [], "bag": [], "hat": []}
     all_predictions = {"gender": [], "bag": [], "hat": []}
-    running_loss = 0.0
 
     with torch.no_grad():
         for images, labels in dataloader:
@@ -23,7 +22,7 @@ def test_model(model, dataloader, device):
             # Estrazione delle predizioni
             for task in ["gender", "bag", "hat"]:
                 task_index = ["gender", "bag", "hat"].index(task)
-                preds = torch.sigmoid(outputs[task]) > 0.5
+                preds = (torch.sigmoid(outputs[task]) > 0.5).int()
                 all_predictions[task].extend(preds[masks[:, task_index]].cpu().numpy())
                 all_labels[task].extend(labels[masks[:, task_index], task_index].cpu().numpy())
 

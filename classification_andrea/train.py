@@ -130,7 +130,7 @@ def validate(model, dataloader, criterion, device, epoch):
 
             # Predizioni e etichette
             for task in ["gender", "bag", "hat"]:
-                preds = torch.sigmoid(outputs[task]) > 0.5
+                preds = (torch.sigmoid(outputs[task]) > 0.5).int()
                 all_predictions[task].extend(preds[masks[:, ["gender", "bag", "hat"].index(task)]].cpu().numpy())
                 task_index = ["gender", "bag", "hat"].index(task)
                 all_labels[task].extend(labels[masks[:, task_index], task_index].cpu().numpy())
@@ -213,7 +213,7 @@ def main():
 
     print("Istanziando dataloaders...")
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=sampler)
-    #train_loader = DataLoader(train_dataset, batch_size=args.batch_size)
+    #train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
 
     model = PARMultiTaskNet(backbone_name=args.backbone, pretrained=True).to(device)
@@ -273,7 +273,7 @@ def main():
         print(f"Epoch [{epoch + 1}/{args.epochs}] - Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
         for task, metrics in val_metrics.items():
             print(
-                f"{task.capitalize()} - Accuracy: {metrics['accuracy']:.4f}, Precision: {metrics['precision']:.4f},Recall: {metrics['recall']:.4f}, F1: {metrics['f1']:.4f}")
+                f"{task.capitalize()} - Validation Accuracy: {metrics['accuracy']:.4f}, Precision: {metrics['precision']:.4f},Recall: {metrics['recall']:.4f}, F1: {metrics['f1']:.4f}")
 
         plot_metrics(metrics_history, args.checkpoint_dir, epoch + 1, loss_history, val_loss_history)
 

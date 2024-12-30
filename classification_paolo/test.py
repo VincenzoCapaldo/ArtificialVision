@@ -2,7 +2,7 @@ import argparse
 
 import torch
 from torch.utils.data import DataLoader
-from sklearn.metrics import precision_score, recall_score, f1_score
+from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score
 from tqdm import tqdm
 
 from dataset import CustomDataset
@@ -43,6 +43,7 @@ def main():
     print(f"Recall: {recall:.4f}")
     print(f"F1-Score: {f1:.4f}")
 
+
 # Funzione per calcolare le metriche
 def calculate_metrics(model, dataloader):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -63,12 +64,14 @@ def calculate_metrics(model, dataloader):
             all_predictions.extend(predictions)
 
     # Calcolo delle metriche
-    accuracy = (torch.tensor(all_predictions) == torch.tensor(all_labels)).float().mean().item()
-    precision = precision_score(all_labels, all_predictions)
-    recall = recall_score(all_labels, all_predictions)
-    f1 = f1_score(all_labels, all_predictions)
+    # accuracy = (torch.tensor(all_predictions) == torch.tensor(all_labels)).float().mean().item()
+    accuracy = accuracy_score(all_labels, all_predictions)
+    precision = precision_score(all_labels, all_predictions, zero_division=0)
+    recall = recall_score(all_labels, all_predictions, zero_division=0)
+    f1 = f1_score(all_labels, all_predictions, zero_division=0)
 
     return accuracy, precision, recall, f1
+
 
 if __name__ == "__main__":
     main()
