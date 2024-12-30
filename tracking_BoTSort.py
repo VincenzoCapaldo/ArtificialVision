@@ -33,9 +33,9 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
 
     # Open the video file
     cap = cv2.VideoCapture(video_path)
+    fps = int(cap.get(cv2.CAP_PROP_FPS)+1)
     if real_time:
     # Calculating the time per frame, needed for real time constraint
-        fps = cap.get(cv2.CAP_PROP_FPS)
         ms_per_frame = 1/fps
     # Store the track history (for each ID, its trajectory)
     track_history = defaultdict(lambda: [])
@@ -114,7 +114,7 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
                         lista_attraversamenti[track_id] = []
                     lista_attraversamenti[track_id].extend(crossed_line_id)
 
-                if frame_count == 30:
+                if (frame_count % fps == 0):
                     gui.screen_save(frame, top_left_corner, bottom_right_corner,track_id)
 
                 # Add a new person
