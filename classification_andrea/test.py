@@ -1,5 +1,6 @@
 import torch
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 from dataset import TestDataset
 from nets import PARMultiTaskNet
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
@@ -13,7 +14,7 @@ def test_model(model, dataloader, device):
     all_predictions = {"gender": [], "bag": [], "hat": []}
 
     with torch.no_grad():
-        for images, labels in dataloader:
+        for images, labels in tqdm(dataloader, desc=f"Test..."):
             images, labels = images.to(device), labels.to(device)
             masks = labels >= 0
 
@@ -44,7 +45,7 @@ def test_model(model, dataloader, device):
 if __name__ == "__main__":
     # Configurazioni del test
     data_dir = './dataset'
-    checkpoint_path = './checkpoints/best_model.pth'
+    checkpoint_path = './classification_andrea/models/resnet50 con adam e loss pesata.pth'
     batch_size = 32
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -54,7 +55,9 @@ if __name__ == "__main__":
 
     # Caricamento del modello
     model = PARMultiTaskNet(backbone_name='resnet50', pretrained=False).to(device)
-    model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+    #model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+    checkpoint = torch.load(checkpoint_path, map_location=device)
+    model.load_state_dict(checkpoint['model_state'])
 
     # Test del modello
     print("\nTesting model...")
