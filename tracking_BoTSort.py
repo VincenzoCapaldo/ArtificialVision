@@ -68,6 +68,8 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
                 x1, y1, x2, y2 = int(x - w / 2), int(y - h / 2), int(x + w / 2), int(y + h / 2)
                 top_left_corner = (x1, y1)
                 bottom_right_corner = (x2, y2)
+                # starting point for display pedestrian attribute
+                bottom_left_corner = (x1, y2)
 
                 # general information of the scene to display
                 text = []
@@ -75,12 +77,20 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
                 for line in lines_info:
                     text.append(f"Passages for line {line['line_id']}: {line['crossing_counting']}")
 
+                # pedestrian attributes
+                pedestrian_attribute = []
+                pedestrian_attribute.append(f"Gender = M/F")
+                pedestrian_attribute.append("No bag no hat")
+                pedestrian_attribute.append(f"[{', '.join(map(str, lista_attraversamenti.get(track_id, [])))}]")
+
                 # Draw red bounding box
                 gui.add_bounding_box(annotated_frame, top_left_corner, bottom_right_corner)
                 # Draw the tracked people ID
                 gui.add_track_id(annotated_frame, track_id, top_left_corner)
                 # Draw general information about the scene
                 gui.add_info_scene(annotated_frame, text)
+                # Draw pedestrian attribute
+                gui.add_info_scene(annotated_frame, pedestrian_attribute, bottom_left_corner, 0.5, 2)
                 # Draw lines
                 annotated_frame = gui.draw_lines_on_frame(annotated_frame, lines_info)
                 # share bounding box

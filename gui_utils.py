@@ -52,15 +52,15 @@ def add_track_id(frame, track_id, top_left_corner, background_color=(255, 255, 2
         font_thickness)
 
 
-def add_info_scene(frame, text):
+def add_info_scene(frame, text, top_left_corner = (10, 10), font_scale = 0.8, font_thickness = 2):
     """
     Display the general information in the top left corner of the frame
     :param frame: the frame on which to draw the information
     :param text: vector which contains all the information to display
+    :param top_left_corner: starting point of the box
+    :param font_scale: font scale of the displayed text
+    :param font_thickness: font thickness of the displayed text
     """
-    # Parametri per il testo
-    font_scale = 0.8
-    font_thickness = 2
     font = cv.FONT_HERSHEY_SIMPLEX
     text_size = []
     text_width = []
@@ -73,16 +73,16 @@ def add_info_scene(frame, text):
 
     # Definizione della posizione del rettangolo
     padding = 10  # Spazio extra intorno al testo
-    top_left_corner = (padding, padding)
+    # top_left_corner = (padding, padding)
     bottom_right_corner = (
-    padding + max(text_width) + 2 * padding, padding + sum(text_height) + 2 * len(text) * padding)
+    top_left_corner[0] + max(text_width) + 2 * padding, top_left_corner[1] + sum(text_height) + 2 * len(text) * padding)
 
     background_color = (255, 255, 255)
     # Disegna il rettangolo bianco
     cv.rectangle(frame, top_left_corner, bottom_right_corner, background_color, -1)
 
     # Scrivi il testo sopra il rettangolo
-    total_height = 10
+    total_height = top_left_corner[1]
     for i in range(len(text)):
         text_position_x = top_left_corner[0] + padding
         text_position_y = total_height + text_height[0] + (2 * padding) - 5
