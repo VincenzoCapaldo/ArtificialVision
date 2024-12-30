@@ -3,10 +3,12 @@ import cv2
 import numpy as np
 from ultralytics import YOLO
 from OutputWriter import OutputWriter
+from classification_andrea.nets import PARMultiTaskNet
 from lines_utils import get_lines_info, check_crossed_line
 import time
 import gui_utils as gui
-
+import torch
+import torchvision.transforms as T
 
 def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio.mp4", show=False, real_time=True, tracker="confs/botsort.yaml"):
 
@@ -43,6 +45,21 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
 
     lista_attraversamenti = {}  # Stores the lines traversed by each ID
     frame_count = 0
+    pedestrian_attributes = {}
+
+    # Caricamento del modello per la classificazione
+    model = PARMultiTaskNet(backbone_name='resnet50', pretrained=False).to(device)
+    checkpoint_path = './models/resnet50 con adam e loss pesata.pth'
+    checkpoint = torch.load(checkpoint_path, map_location=device)
+    model.load_state_dict(checkpoint['model_state'])
+    model.eval()
+
+    transforms = T.Compose([
+        T.Resize(256),
+        T.CenterCrop(224),
+        T.ToTensor(),
+        T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
 
     # Loop through the video frames
     while cap.isOpened():
@@ -77,20 +94,12 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
                 for line in lines_info:
                     text.append(f"Passages for line {line['line_id']}: {line['crossing_counting']}")
 
-                # pedestrian attributes
-                pedestrian_attribute = []
-                pedestrian_attribute.append(f"Gender = M/F")
-                pedestrian_attribute.append("No bag no hat")
-                pedestrian_attribute.append(f"[{', '.join(map(str, lista_attraversamenti.get(track_id, [])))}]")
-
                 # Draw red bounding box
                 gui.add_bounding_box(annotated_frame, top_left_corner, bottom_right_corner)
                 # Draw the tracked people ID
                 gui.add_track_id(annotated_frame, track_id, top_left_corner)
                 # Draw general information about the scene
                 gui.add_info_scene(annotated_frame, text)
-                # Draw pedestrian attribute
-                gui.add_info_scene(annotated_frame, pedestrian_attribute, bottom_left_corner, 0.5, 2)
                 # Draw lines
                 annotated_frame = gui.draw_lines_on_frame(annotated_frame, lines_info)
                 # share bounding box
@@ -115,10 +124,43 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
                     lista_attraversamenti[track_id].extend(crossed_line_id)
 
                 if (frame_count % fps == 0):
-                    gui.screen_save(frame, top_left_corner, bottom_right_corner,track_id)
+                    # Inferenza
+                    screen = gui.screen(frame, top_left_corner, bottom_right_corner,track_id)
+                    image = transforms(screen)
+                    outputs = model(image)
+
+                    p = []
+                    for task in ["gender", "bag", "hat"]:
+                        preds = (torch.sigmoid(outputs[task]) > 0.5).int().cpu().numpy()
+                        p.append(preds)
+
+                        chiave = (track_id, task)
+                        if chiave not in pedestrian_attributes:
+                            pedestrian_attributes[chiave] = []
+                        pedestrian_attributes[chiave].append(preds)
+
+                    # crezione delle frasi da mettere sotto al bounding box
+                    pedestrian_attribute = []
+                    if p[0] == 0:
+                        gender = "M"
+                    else:
+                        gender = "F"
+                    pedestrian_attribute.append(f"Gender: {gender}")
+                    if not p[1] and not p[2]:
+                        pedestrian_attribute.append("No Bag No Hat")
+                    if p[1] and not p[2]:
+                        pedestrian_attribute.append("Bag")
+                    if not p[1] and p[2]:
+                        pedestrian_attribute.append("Hat")
+                    if p[1] and p[2]:
+                        pedestrian_attribute.append("Bag Hat")
+                    pedestrian_attribute.append(f"[{', '.join(map(str, lista_attraversamenti.get(track_id, [])))}]")
+                    # Draw pedestrian attribute
+                    gui.add_info_scene(annotated_frame, pedestrian_attribute, bottom_left_corner, 0.5, 2)
 
                 # Add a new person
                 output_writer.add_person(track_id)
+
             frame_count += 1
             # Display the annotated frame
             if show:
