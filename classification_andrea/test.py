@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     # Caricamento del modello
     model = PARMultiTaskNet(backbone_name='resnet50', pretrained=False).to(device)
-    #model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+    # model.load_state_dict(torch.load(checkpoint_path, map_location=device))
     checkpoint = torch.load(checkpoint_path, map_location=device)
     model.load_state_dict(checkpoint['model_state'])
 

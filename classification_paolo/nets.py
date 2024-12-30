@@ -43,11 +43,10 @@ class ClassificationModel(nn.Module):
             raise ValueError(f"Backbone {backbone_name} not supported")
         self.backbone = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
 
-        # Congela tutti i parametri del backbone
         for param in self.backbone.parameters():
             param.requires_grad = False
 
-        # Sblocca l'ultimo blocco convoluzionale
+            # Sblocca l'ultimo blocco convoluzionale
         for param in self.backbone.layer4.parameters():
             param.requires_grad = True
 
