@@ -1,6 +1,7 @@
 from collections import defaultdict
 import cv2
 import numpy as np
+from PIL import Image
 from ultralytics import YOLO
 from OutputWriter import OutputWriter
 from classification_andrea.nets import PARMultiTaskNet
@@ -46,13 +47,13 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
     lista_attraversamenti = {}  # Stores the lines traversed by each ID
     frame_count = 0
     pedestrian_attributes = {}
-
+    pedestrian_attribute = []
     # Caricamento del modello per la classificazione
-    model = PARMultiTaskNet(backbone_name='resnet50', pretrained=False).to(device)
-    checkpoint_path = './models/resnet50 con adam e loss pesata.pth'
+    classification = PARMultiTaskNet(backbone_name='resnet50', pretrained=False).to(device)
+    checkpoint_path = './models/checkpoint_epoch_14.pth'
     checkpoint = torch.load(checkpoint_path, map_location=device)
-    model.load_state_dict(checkpoint['model_state'])
-    model.eval()
+    classification.load_state_dict(checkpoint['model_state'])
+    classification.eval()
 
     transforms = T.Compose([
         T.Resize(256),
@@ -94,6 +95,7 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
                 for line in lines_info:
                     text.append(f"Passages for line {line['line_id']}: {line['crossing_counting']}")
 
+
                 # Draw red bounding box
                 gui.add_bounding_box(annotated_frame, top_left_corner, bottom_right_corner)
                 # Draw the tracked people ID
@@ -123,12 +125,16 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
                         lista_attraversamenti[track_id] = []
                     lista_attraversamenti[track_id].extend(crossed_line_id)
 
+                # crezione delle frasi da mettere sotto al bounding box
+
+
                 if (frame_count % fps == 0):
                     # Inferenza
-                    screen = gui.screen(frame, top_left_corner, bottom_right_corner,track_id)
-                    image = transforms(screen)
-                    outputs = model(image)
-
+                    screen = gui.screen(frame, top_left_corner, bottom_right_corner)
+                    image = transforms(Image.fromarray(screen).convert('RGB')).to(device)
+                    image = image.unsqueeze(0)  # Aggiunge una dimensione batch
+                    outputs = classification(image)
+                    pedestrian_attribute = []
                     p = []
                     for task in ["gender", "bag", "hat"]:
                         preds = (torch.sigmoid(outputs[task]) > 0.5).int().cpu().numpy()
@@ -139,8 +145,7 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
                             pedestrian_attributes[chiave] = []
                         pedestrian_attributes[chiave].append(preds)
 
-                    # crezione delle frasi da mettere sotto al bounding box
-                    pedestrian_attribute = []
+
                     if p[0] == 0:
                         gender = "M"
                     else:
@@ -154,8 +159,11 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
                         pedestrian_attribute.append("Hat")
                     if p[1] and p[2]:
                         pedestrian_attribute.append("Bag Hat")
+
                     pedestrian_attribute.append(f"[{', '.join(map(str, lista_attraversamenti.get(track_id, [])))}]")
-                    # Draw pedestrian attribute
+
+                # Draw pedestrian attribute
+                if len(pedestrian_attribute) != 0:
                     gui.add_info_scene(annotated_frame, pedestrian_attribute, bottom_left_corner, 0.5, 2)
 
                 # Add a new person
