@@ -140,31 +140,35 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
                         preds = (torch.sigmoid(outputs[task]) > 0.5).int().cpu().numpy()
                         p.append(preds)
 
-                        chiave = (track_id, task)
-                        if chiave not in pedestrian_attributes:
-                            pedestrian_attributes[chiave] = []
-                        pedestrian_attributes[chiave].append(preds)
+                    # Aggiorna il dizionario degli attributi
+                    pedestrian_attributes[track_id] = {
+                        "gender": "M" if p[0] == 0 else "F",
+                        "bag": bool(p[1]),
+                        "hat": bool(p[2]),
+                        "crossed_lines": lista_attraversamenti.get(track_id, [])
+                    }
 
+                attributes = pedestrian_attributes.get(track_id, {
+                    "gender": "Unknown",
+                    "bag": False,
+                    "hat": False,
+                    "crossed_lines": []
+                })
 
-                    if p[0] == 0:
-                        gender = "M"
-                    else:
-                        gender = "F"
-                    pedestrian_attribute.append(f"Gender: {gender}")
-                    if not p[1] and not p[2]:
-                        pedestrian_attribute.append("No Bag No Hat")
-                    if p[1] and not p[2]:
-                        pedestrian_attribute.append("Bag")
-                    if not p[1] and p[2]:
-                        pedestrian_attribute.append("Hat")
-                    if p[1] and p[2]:
-                        pedestrian_attribute.append("Bag Hat")
+                # Costruisci la lista di attributi da mostrare
+                pedestrian_attribute = [f"Gender: {attributes['gender']}"]
+                if not attributes["bag"] and not attributes["hat"]:
+                    pedestrian_attribute.append("No Bag No Hat")
+                if attributes["bag"] and not attributes["hat"]:
+                    pedestrian_attribute.append("Bag")
+                if not attributes["bag"] and attributes["hat"]:
+                    pedestrian_attribute.append("Hat")
+                if attributes["bag"] and attributes["hat"]:
+                    pedestrian_attribute.append("Bag Hat")
+                pedestrian_attribute.append(f"[{', '.join(map(str, attributes['crossed_lines']))}]")
 
-                    pedestrian_attribute.append(f"[{', '.join(map(str, lista_attraversamenti.get(track_id, [])))}]")
-
-                # Draw pedestrian attribute
-                if len(pedestrian_attribute) != 0:
-                    gui.add_info_scene(annotated_frame, pedestrian_attribute, bottom_left_corner, 0.5, 2)
+                # Disegna gli attributi sotto il bounding box
+                gui.add_info_scene(annotated_frame, pedestrian_attribute, bottom_left_corner, 0.5, 2)
 
                 # Add a new person
                 output_writer.add_person(track_id)
