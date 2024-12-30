@@ -3,6 +3,8 @@ import argparse
 import torch
 from torch.utils.data import DataLoader
 from sklearn.metrics import precision_score, recall_score, f1_score
+from tqdm import tqdm
+
 from dataset import CustomDataset
 from nets import ClassificationModel
 
@@ -50,7 +52,7 @@ def calculate_metrics(model, dataloader):
     all_predictions = []
 
     with torch.no_grad():
-        for inputs, labels in dataloader:
+        for inputs, labels in tqdm(dataloader, desc=f"Testing..."):
             inputs, labels = inputs.to(device), labels.to(device)
 
             outputs = model(inputs).squeeze()
