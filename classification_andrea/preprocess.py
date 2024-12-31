@@ -116,9 +116,15 @@ if __name__ == "__main__":
     # dividi_train_val(input_file, train_file, val_file, 0.8, 65464)
     # print("Training set diviso in train e validation")
 
-    # Calcola i pesi utilizzando il file di default
+    #--- TRAIN PLOT ---
     weights, labels = calculate_class_weights_from_file("./dataset/train_split.txt")
-    print("Pesi calcolati:", weights)
 
+    # --- VALIDATION PLOT ---
+    #weights, labels = calculate_class_weights_from_file("./dataset/val_split.txt")
+
+    # --- TEST PLOT ---
+    #weights, labels = calculate_class_weights_from_file("./dataset/test_set.txt")
+
+    print("Pesi calcolati:", weights)
     # Crea e salva i grafici della distribuzione
     plot_label_distribution(labels)

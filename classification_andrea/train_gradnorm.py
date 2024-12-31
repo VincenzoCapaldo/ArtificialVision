@@ -14,6 +14,41 @@ import torch
 import numpy as np
 
 
+def masked_loss(criterion, outputs, labels, mask):
+    """
+    Applica una masked loss, escludendo contributi delle label -1.
+    :param criterion: Funzione di perdita (es. BCEWithLogitsLoss)
+    :param outputs: Output del modello
+    :param labels: Etichette target
+    :param mask: Maschera binaria (1 dove label >= 0, 0 altrove)
+    :return: Loss mascherata
+    """
+    masked_outputs = outputs[mask]
+    masked_labels = labels[mask]
+    if masked_outputs.numel() == 0:  # Evita errore se maschera è vuota
+        return torch.tensor(0.0, device=outputs.device).mean()
+    return criterion(masked_outputs, masked_labels).mean()
+
+def initialize_weights_xavier(model):
+    for module in model.gender_head.modules():
+        if isinstance(module, (nn.Linear, nn.Conv2d)):
+            nn.init.xavier_uniform_(module.weight)
+            if module.bias is not None:
+                nn.init.constant_(module.bias, 0)
+
+    for module in model.bag_head.modules():
+        if isinstance(module, (nn.Linear, nn.Conv2d)):
+            nn.init.xavier_uniform_(module.weight)
+            if module.bias is not None:
+                nn.init.constant_(module.bias, 0)
+
+    for module in model.hat_head.modules():
+        if isinstance(module, (nn.Linear, nn.Conv2d)):
+            nn.init.xavier_uniform_(module.weight)
+            if module.bias is not None:
+                nn.init.constant_(module.bias, 0)
+
+
 def calculate_class_weights(dataset):
     """
     Calcola i pesi per bilanciare le classi per ogni task e assegna un peso per ogni campione.
@@ -63,27 +98,26 @@ def validate(model, dataloader, device, epoch, weights):
 
     with torch.no_grad():
         for images, labels in tqdm(dataloader, desc=f"Validation Epoch {epoch + 1}"):
-            images, labels = images.to(device), [label.to(device) for label in labels]
+            images, labels = images.to(device), labels.to(device)
 
             outputs = model(images)
-            loss = model.compute_loss(outputs, labels)
-            total_loss = sum(loss)
+
+            masks = labels >= 0
+            gender_loss = masked_loss(model.gender_loss, outputs["gender"].squeeze(), labels[:, 0], masks[:, 0])
+            bag_loss = masked_loss(model.bag_loss, outputs["bag"].squeeze(), labels[:, 1], masks[:, 1])
+            hat_loss = masked_loss(model.hat_loss, outputs["hat"].squeeze(), labels[:, 2], masks[:, 2])
+            loss = [gender_loss, bag_loss, hat_loss]
+
             loss = torch.stack(loss, dim=0)
             weighted_validation_loss = weights.to(device) @ loss.to(device)
             val_losses.append(weighted_validation_loss)
 
             # Predizioni e etichette
             for task in ["gender", "bag", "hat"]:
+                pred = (torch.sigmoid(outputs[task]) > 0.5).int()
+                all_predictions[task].extend(pred[masks[:, ["gender", "bag", "hat"].index(task)]].cpu().numpy())
                 task_index = ["gender", "bag", "hat"].index(task)
-                # Crea la maschera per valori validi (label diversa da -1)
-                mask = (labels[task_index] != -1)
-                # Predizioni e label validi
-                preds = (torch.sigmoid(outputs[task]) > 0.5).int()
-                valid_preds = preds[mask]  # Filtra solo i valori validi
-                valid_labels = labels[task_index][mask]  # Filtra solo i valori validi
-                # Aggiungi alle liste globali
-                all_predictions[task].extend(valid_preds.cpu().numpy())
-                all_labels[task].extend(valid_labels.cpu().numpy())
+                all_labels[task].extend(labels[masks[:, task_index], task_index].cpu().numpy())
 
     # Calcolo delle metriche per ogni task
     metrics = {}
@@ -129,7 +163,8 @@ def plot_metrics(metrics_history, output_dir, epoch, loss_history, val_loss_hist
     plt.close()
 
 
-def start_training(model, train_loader, val_loader, best_val_loss, optimizer, device, start_epoch, epochs, checkpoint_dir, patience, weights=None, l0=None):
+def start_training(model, train_loader, val_loader, best_val_loss, optimizer, device, start_epoch, epochs,
+                   checkpoint_dir, patience, weights=None, l0=None):
     patience_counter = 0
     metrics_history = []
     loss_history = []
@@ -149,6 +184,7 @@ def start_training(model, train_loader, val_loader, best_val_loss, optimizer, de
         optimizer2 = None
         T = None
         init_weights = True
+
     # --- TRAINING ---
     for epoch in range(start_epoch, epochs):
         print(f'Epoch {epoch+1}/{epochs}')
@@ -156,12 +192,18 @@ def start_training(model, train_loader, val_loader, best_val_loss, optimizer, de
         running_loss = 0.0
 
         for images, labels in tqdm(train_loader, desc=f"Training Epoch {epoch + 1}"):
-            images, labels = images.to(device), [label.to(device) for label in labels]
+            images, labels = images.to(device), labels.to(device)
 
             outputs = model(images)
-            loss = model.compute_masked_loss(outputs, labels)
+
+            masks = labels >= 0
+            gender_loss = masked_loss(model.gender_loss, outputs["gender"].squeeze(), labels[:, 0], masks[:, 0])
+            bag_loss = masked_loss(model.bag_loss, outputs["bag"].squeeze(), labels[:, 1], masks[:, 1])
+            hat_loss = masked_loss(model.hat_loss, outputs["hat"].squeeze(), labels[:, 2], masks[:, 2])
+            loss = [gender_loss, bag_loss, hat_loss]
+
             #print(loss)
-            total_loss = sum(loss)
+            #total_loss = sum(loss)
             #print(total_loss)
             loss = torch.stack(loss, dim=0)
 
@@ -177,6 +219,7 @@ def start_training(model, train_loader, val_loader, best_val_loss, optimizer, de
 
             # compute the weighted loss
             weighted_loss = weights.to(device) @ loss.to(device)
+            #print(weights, weighted_loss)
             # clear gradients of network
             optimizer.zero_grad()
             # backward pass for weigthted task loss
@@ -217,7 +260,7 @@ def start_training(model, train_loader, val_loader, best_val_loss, optimizer, de
             weights = torch.nn.Parameter(weights)
             optimizer2 = torch.optim.Adam([weights], lr=0.01)
 
-            running_loss += total_loss.item()
+            running_loss += weighted_loss.item()
 
             # For Plots
             # weight for each task
@@ -228,7 +271,7 @@ def start_training(model, train_loader, val_loader, best_val_loss, optimizer, de
         loss_history.append(running_loss / len(train_loader))
 
         # --- VALIDATION ---
-        weighted_val_loss, val_metrics = validate(model, val_loader, device, epoch)
+        weighted_val_loss, val_metrics = validate(model, val_loader, device, epoch, weights)
         metrics_history.append(val_metrics)
         val_loss_history.append(weighted_val_loss)
 
@@ -262,6 +305,7 @@ def start_training(model, train_loader, val_loader, best_val_loss, optimizer, de
             print("Early stopping triggered")
             break
 
+        print("Pesi a fine epoca:",weights)
     return log_weights, log_loss
 
 
@@ -270,7 +314,7 @@ def main():
     parser.add_argument('--data_dir', type=str, default='./dataset', help='Path al dataset')
     parser.add_argument('--batch_size', type=int, default=16, help='Batch size')
     parser.add_argument('--weight_decay', type=float, default=0.0001, help='Weight decay (L2 regularization)')
-    parser.add_argument('--epochs', type=int, default=30, help='Numero di epoche')
+    parser.add_argument('--epochs', type=int, default=50, help='Numero di epoche')
     parser.add_argument('--lr_backbone', type=float, default=0.0001, help='Learning rate backbone')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate classification heads')
     parser.add_argument('--momentum', type=float, default=0.9, help='Momentum')
@@ -280,9 +324,10 @@ def main():
     parser.add_argument('--resume_checkpoint', type=bool, default=False)
     parser.add_argument('--patience', type=int, default=7)
     parser.add_argument('--backbone', type=str, default='resnet50', help='Backbone name: resnet50 o resnet18')
-    parser.add_argument('--balancing', type=bool, default=False, help='Balancing batches')
+    parser.add_argument('--balancing', type=bool, default=True, help='Balancing batches')
     parser.add_argument('--num_workers', type=int, default=0, help='Number of workers')
     parser.add_argument('--optimizer', type=str, default="adam", help='adam o sgd')
+    parser.add_argument('--cbam', type=bool, default=False, help='use cbum attention')
     args = parser.parse_args()
 
     device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
@@ -306,7 +351,9 @@ def main():
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
     print("Istanziando modello")
-    model = PARMultiTaskNet(backbone=args.backbone).to(device)
+    model = PARMultiTaskNet(backbone=args.backbone, pretrained=True, cbam=args.cbam).to(device)
+    # Applicazione dell'inizializzazione Xavier
+    initialize_weights_xavier(model)
 
     if args.optimizer == "adam":
         optimizer = AdamW(

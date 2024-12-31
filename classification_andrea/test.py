@@ -2,7 +2,7 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from dataset import TestDataset
-from nets import PARMultiTaskNet
+from classification_andrea.nets import PARMultiTaskNet
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 

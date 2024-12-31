@@ -66,9 +66,8 @@ class TrainDataset(PARCustomDataset):
         """
         # Trasformazioni specifiche per train e validation
         transforms = T.Compose([
-            T.Resize(256),
-            T.RandomHorizontalFlip(p=0.5),
-            T.RandomCrop(224),
+            T.Resize((224, 224)),
+            T.RandomHorizontalFlip(),
             T.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
             T.ToTensor(),
             T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
@@ -88,8 +87,7 @@ class ValidationDataset(PARCustomDataset):
         """
         # Trasformazioni specifiche per train e validation
         transforms = T.Compose([
-            T.Resize(256),
-            T.CenterCrop(224),
+            T.Resize((224, 224)),
             T.ToTensor(),
             T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ])
@@ -105,8 +103,7 @@ class TestDataset(PARCustomDataset):
         :param txt_file: File di testo con le annotazioni (default: "test_set.txt")
         """
         transforms = T.Compose([
-            T.Resize(256),
-            T.CenterCrop(224),
+            T.Resize((224, 224)),
             T.ToTensor(),
             T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ])

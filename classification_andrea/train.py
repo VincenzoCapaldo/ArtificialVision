@@ -4,12 +4,12 @@ import torch.nn as nn
 import torch.optim as optim
 from matplotlib import pyplot as plt
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch.utils.data import DataLoader, WeightedRandomSampler
+from torch.utils.data import DataLoader, WeightedRandomSampler, SubsetRandomSampler
 import argparse
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from tqdm import tqdm
 from dataset import TrainDataset, ValidationDataset
-from nets import PARMultiTaskNet
+from classification_andrea.nets import PARMultiTaskNet
 import torch
 import numpy as np
 
@@ -96,6 +96,7 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch):
         gender_loss = masked_loss(criterion, outputs["gender"].squeeze(), labels[:, 0], masks[:, 0])
         bag_loss = masked_loss(criterion, outputs["bag"].squeeze(), labels[:, 1], masks[:, 1])
         hat_loss = masked_loss(criterion, outputs["hat"].squeeze(), labels[:, 2], masks[:, 2])
+        print(gender_loss, bag_loss, hat_loss)
         loss = 1/3 * gender_loss + 1/3 * bag_loss + 1/3 * hat_loss
         loss.backward()
         optimizer.step()
@@ -124,7 +125,7 @@ def validate(model, dataloader, criterion, device, epoch):
             gender_loss = masked_loss(criterion, outputs["gender"].squeeze(), labels[:, 0], masks[:, 0])
             bag_loss = masked_loss(criterion, outputs["bag"].squeeze(), labels[:, 1], masks[:, 1])
             hat_loss = masked_loss(criterion, outputs["hat"].squeeze(), labels[:, 2], masks[:, 2])
-
+            #print(gender_loss,bag_loss,hat_loss)
             loss = 1/3 * gender_loss + 1/3 * bag_loss + 1/3 * hat_loss
             running_loss += loss.item()
 
@@ -185,7 +186,7 @@ def main():
     parser.add_argument('--data_dir', type=str, default='./dataset', help='Path al dataset')
     parser.add_argument('--batch_size', type=int, default=16, help='Batch size')
     parser.add_argument('--weight_decay', type=float, default=0.0001, help='Weight decay (L2 regularization)')
-    parser.add_argument('--epochs', type=int, default=25, help='Numero di epoche')
+    parser.add_argument('--epochs', type=int, default=50, help='Numero di epoche')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
     parser.add_argument('--momentum', type=float, default=0.9, help='Momentum')
     parser.add_argument('--device', type=str, default='cuda', help='Device: cuda o cpu')
@@ -194,7 +195,9 @@ def main():
     parser.add_argument('--resume_checkpoint', type=bool, default=False)
     parser.add_argument('--patience', type=int, default=7)
     parser.add_argument('--backbone', type=str, default='resnet50', help='Backbone name: resnet50 o resnet18')
-
+    parser.add_argument('--balancing', type=bool, default=True, help='Balancing batches')
+    parser.add_argument('--num_workers', type=int, default=0, help='Number of workers')
+    parser.add_argument('--cbam', type=bool, default=False, help='use cbum attention')
     args = parser.parse_args()
 
     device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
@@ -207,16 +210,18 @@ def main():
     print("Istanziando validation set...")
     val_dataset = ValidationDataset(data_dir=args.data_dir)
 
-    print("Calcolo dei pesi delle classi...")
-    class_weights = calculate_class_weights(train_dataset)
-    sampler = WeightedRandomSampler(class_weights, len(train_dataset))
+    if args.balancing:
+        print("Calcolo dei pesi delle classi per il bilanciamento dei batches...")
+        class_weights = calculate_class_weights(train_dataset)
+        sampler = WeightedRandomSampler(class_weights, len(train_dataset))
+    else:
+        sampler = SubsetRandomSampler(list(range(len(train_dataset))))
 
     print("Istanziando dataloaders...")
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=sampler)
-    #train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
 
-    model = PARMultiTaskNet(backbone_name=args.backbone, pretrained=True).to(device)
+    model = PARMultiTaskNet(backbone=args.backbone, pretrained=True, cbam=args.cbam).to(device)
     # Applica l'inizializzazione ai soli moduli delle teste
     model.gender_head.apply(initialize_weights)
     model.bag_head.apply(initialize_weights)
