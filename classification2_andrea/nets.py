@@ -16,7 +16,7 @@ class Backbone(nn.Module):
             # Rimuovi il global average pooling e il layer classifier
             self.backbone = nn.Sequential(*list(backbone.features.children()))
         elif name == "resnet18":
-            backbone = models.resnet50(weights=ResNet18_Weights.DEFAULT)
+            backbone = models.resnet18(weights=ResNet18_Weights.DEFAULT)
             self.out_features = backbone.fc.in_features
             self.backbone = nn.Sequential(*list(backbone.children())[:-2])
         elif name == "resnet50":
