@@ -52,7 +52,10 @@ class OutputWriter:
         """
         for person in self.people:
             if person["id"] == person_id:
-                person["gender"] = gender
+                if gender == 0:
+                    person["gender"] = "male"
+                else:
+                    person["gender"] = "female"
                 return
         raise ValueError(f"Person with ID {person_id} not found.")
 
@@ -65,7 +68,10 @@ class OutputWriter:
         """
         for person in self.people:
             if person["id"] == person_id:
-                person["hat"] = hat
+                if hat == 0:
+                    person["hat"] = "false"
+                else:
+                    person["hat"] = "true"
                 return
         raise ValueError(f"Person with ID {person_id} not found.")
 
@@ -78,7 +84,10 @@ class OutputWriter:
         """
         for person in self.people:
             if person["id"] == person_id:
-                person["bag"] = bag
+                if bag == 0:
+                    person["bag"] = "false"
+                else:
+                    person["bag"] = "true"
                 return
         raise ValueError(f"Person with ID {person_id} not found.")
 

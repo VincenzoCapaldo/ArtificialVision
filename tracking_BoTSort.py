@@ -50,7 +50,7 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
     pedestrian_attribute = []
     # Caricamento del modello per la classificazione
     classification = PARMultiTaskNet(backbone_name='resnet50', pretrained=False).to(device)
-    checkpoint_path = './models/checkpoint_epoch_14.pth'
+    checkpoint_path = './models/resnet50 - i pesi della backbone si aggiornano come le teste.pth'
     checkpoint = torch.load(checkpoint_path, map_location=device)
     classification.load_state_dict(checkpoint['model_state'])
     classification.eval()
@@ -134,7 +134,6 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
                     image = transforms(Image.fromarray(screen).convert('RGB')).to(device)
                     image = image.unsqueeze(0)  # Aggiunge una dimensione batch
                     outputs = classification(image)
-                    pedestrian_attribute = []
                     p = []
                     for task in ["gender", "bag", "hat"]:
                         preds = (torch.sigmoid(outputs[task]) > 0.5).int().cpu().numpy()
@@ -142,21 +141,25 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
 
                     # Aggiorna il dizionario degli attributi
                     pedestrian_attributes[track_id] = {
-                        "gender": "M" if p[0] == 0 else "F",
-                        "bag": bool(p[1]),
-                        "hat": bool(p[2]),
+                        "gender": p[0],
+                        "bag": p[1],
+                        "hat": p[2],
                         "crossed_lines": lista_attraversamenti.get(track_id, [])
                     }
 
+                # Se track_id non è presente, viene creato un nuovo dizionario con i seguenti valori predefiniti
                 attributes = pedestrian_attributes.get(track_id, {
-                    "gender": "Unknown",
+                    "gender": False,
                     "bag": False,
                     "hat": False,
                     "crossed_lines": []
                 })
 
                 # Costruisci la lista di attributi da mostrare
-                pedestrian_attribute = [f"Gender: {attributes['gender']}"]
+                if attributes["gender"]:
+                    pedestrian_attribute = [f"Gender: F"]
+                else:
+                    pedestrian_attribute = [f"Gender: M"]
                 if not attributes["bag"] and not attributes["hat"]:
                     pedestrian_attribute.append("No Bag No Hat")
                 if attributes["bag"] and not attributes["hat"]:
@@ -203,7 +206,13 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
         output_writer.set_trajectory(id, trajectory)
 
     # Add classification information for all the people
-
+    for id in pedestrian_attributes:
+        gender = pedestrian_attributes[id]["gender"]
+        output_writer.set_gender(id, gender)
+        bag = pedestrian_attributes[id]["bag"]
+        output_writer.set_bag(id, bag)
+        hat = pedestrian_attributes[id]["hat"]
+        output_writer.set_hat(id, hat)
 
     # Print people info on "./output/output.json" file
     output_writer.write_output()

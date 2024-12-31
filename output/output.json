@@ -2,76 +2,34 @@
     "people": [
         {
             "id": 1,
-            "gender": "",
-            "hat": "",
-            "bag": "",
+            "gender": "female",
+            "hat": "true",
+            "bag": "false",
             "trajectory": ""
         },
         {
             "id": 2,
-            "gender": "",
-            "hat": "",
-            "bag": "",
+            "gender": "male",
+            "hat": "false",
+            "bag": "false",
             "trajectory": ""
         },
         {
             "id": 3,
-            "gender": "",
-            "hat": "",
-            "bag": "",
+            "gender": "female",
+            "hat": "false",
+            "bag": "true",
             "trajectory": ""
         },
         {
             "id": 4,
-            "gender": "",
-            "hat": "",
-            "bag": "",
-            "trajectory": ""
-        },
-        {
-            "id": 5,
-            "gender": "",
-            "hat": "",
-            "bag": "",
+            "gender": "female",
+            "hat": "false",
+            "bag": "false",
             "trajectory": ""
         },
         {
             "id": 6,
-            "gender": "",
-            "hat": "",
-            "bag": "",
-            "trajectory": ""
-        },
-        {
-            "id": 7,
-            "gender": "",
-            "hat": "",
-            "bag": "",
-            "trajectory": ""
-        },
-        {
-            "id": 8,
-            "gender": "",
-            "hat": "",
-            "bag": "",
-            "trajectory": ""
-        },
-        {
-            "id": 9,
-            "gender": "",
-            "hat": "",
-            "bag": "",
-            "trajectory": ""
-        },
-        {
-            "id": 10,
-            "gender": "",
-            "hat": "",
-            "bag": "",
-            "trajectory": ""
-        },
-        {
-            "id": 11,
             "gender": "",
             "hat": "",
             "bag": "",
@@ -85,55 +43,191 @@
             "trajectory": ""
         },
         {
-            "id": 13,
-            "gender": "",
-            "hat": "",
-            "bag": "",
-            "trajectory": ""
-        },
-        {
-            "id": 14,
-            "gender": "",
-            "hat": "",
-            "bag": "",
-            "trajectory": ""
-        },
-        {
             "id": 15,
-            "gender": "",
-            "hat": "",
-            "bag": "",
+            "gender": "female",
+            "hat": "false",
+            "bag": "false",
             "trajectory": ""
-        },
-        {
-            "id": 16,
-            "gender": "",
-            "hat": "",
-            "bag": "",
-            "trajectory": [
-                2
-            ]
-        },
-        {
-            "id": 17,
-            "gender": "",
-            "hat": "",
-            "bag": "",
-            "trajectory": [
-                2
-            ]
         },
         {
             "id": 18,
             "gender": "",
             "hat": "",
             "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 20,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 28,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 30,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 31,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 32,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 36,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 37,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 42,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 43,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 44,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 47,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 48,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 50,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 51,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 53,
+            "gender": "male",
+            "hat": "true",
+            "bag": "true",
             "trajectory": [
                 2
             ]
         },
         {
-            "id": 19,
+            "id": 63,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 64,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 65,
+            "gender": "male",
+            "hat": "false",
+            "bag": "false",
+            "trajectory": ""
+        },
+        {
+            "id": 68,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 69,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 76,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 77,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 81,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 85,
+            "gender": "",
+            "hat": "",
+            "bag": "",
+            "trajectory": ""
+        },
+        {
+            "id": 97,
             "gender": "",
             "hat": "",
             "bag": "",
