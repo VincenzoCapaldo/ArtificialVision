@@ -152,7 +152,7 @@ class ClassificationHead(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
         # Moduli di attenzione specifici per task
-        self.attention = TaskSpecificAttention(self.backbone.fc.in_features)
+        self.attention = TaskSpecificAttention(input_features)
 
         # Serie di layer fully connected per il processo decisionale
         self.fc1 = nn.Linear(self.input_features, 512)  # first dense layer
