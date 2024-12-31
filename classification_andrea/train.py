@@ -96,7 +96,7 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch):
         gender_loss = masked_loss(criterion, outputs["gender"].squeeze(), labels[:, 0], masks[:, 0])
         bag_loss = masked_loss(criterion, outputs["bag"].squeeze(), labels[:, 1], masks[:, 1])
         hat_loss = masked_loss(criterion, outputs["hat"].squeeze(), labels[:, 2], masks[:, 2])
-        loss = gender_loss + bag_loss + hat_loss
+        loss = 1/3 * gender_loss + 1/3 * bag_loss + 1/3 * hat_loss
         loss.backward()
         optimizer.step()
 
@@ -125,7 +125,7 @@ def validate(model, dataloader, criterion, device, epoch):
             bag_loss = masked_loss(criterion, outputs["bag"].squeeze(), labels[:, 1], masks[:, 1])
             hat_loss = masked_loss(criterion, outputs["hat"].squeeze(), labels[:, 2], masks[:, 2])
 
-            loss = gender_loss + bag_loss + hat_loss
+            loss = 1/3 * gender_loss + 1/3 * bag_loss + 1/3 * hat_loss
             running_loss += loss.item()
 
             # Predizioni e etichette
@@ -282,6 +282,7 @@ def main():
 
         if val_loss < best_val_loss:
             best_val_loss = val_loss
+            patience_counter = 0
             checkpoint = {
                 'epoch': epoch+1,
                 'model_state': model.state_dict(),
