@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torchvision.models as models
 from ultralytics.nn.modules import CBAM
+import torch.nn.functional as F
 
 
 class Backbone(nn.Module):
@@ -119,10 +120,10 @@ class ClassificationHeadCbam(nn.Module):
         x = x.view(x.size(0), -1)
 
         # Passa attraverso i layer fully connected con ReLU e dropout
-        x = nn.ReLU(self.fc1(x))
-        x = nn.ReLU(self.fc2(x))
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
         # x = self.dropout(x)
-        x = nn.ReLU(self.fc3(x))
+        x = F.relu(self.fc3(x))
         x = self.dropout(x)  # Dropout applicato prima del layer finale
         x = self.fc4(x)  # Layer finale
 
@@ -181,12 +182,13 @@ class ClassificationHead(nn.Module):
         x = self.attention(x)
 
         # Passa attraverso i layer fully connected con ReLU e dropout
-        x = nn.ReLU(self.fc1(x))
+        x = F.relu(self.fc1(x))
         x = self.dropout(x)
-        x = nn.ReLU(self.fc2(x))
+        x = F.relu(self.fc2(x))
         x = self.dropout(x)  # Dropout applicato prima del layer finale
         x = self.fc3(x)
         #x = self.fc4(x)  # Layer finale
+        return x
 
 
 class PARMultiTaskNet(nn.Module):
