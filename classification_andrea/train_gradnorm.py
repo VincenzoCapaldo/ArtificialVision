@@ -82,7 +82,7 @@ def calculate_class_weights(dataset):
 
 def validate(model, dataloader, device, epoch, weights):
     model.eval()
-    val_losses = []
+    running_loss = 0.0
     # Metriche per ogni task
     all_labels = {"gender": [], "bag": [], "hat": []}
     all_predictions = {"gender": [], "bag": [], "hat": []}
@@ -101,7 +101,7 @@ def validate(model, dataloader, device, epoch, weights):
 
             loss = torch.stack(loss, dim=0)
             weighted_validation_loss = weights.to(device) @ loss.to(device)
-            val_losses.append(weighted_validation_loss)
+            running_loss += weighted_validation_loss.item()
 
             # Predizioni e etichette
             for task in ["gender", "bag", "hat"]:
@@ -118,7 +118,7 @@ def validate(model, dataloader, device, epoch, weights):
         recall = recall_score(all_labels[task], all_predictions[task], zero_division=0)
         f1 = f1_score(all_labels[task], all_predictions[task], zero_division=0)
         metrics[task] = {"accuracy": accuracy, "precision": precision, "recall": recall, "f1": f1}
-    return torch.stack(val_losses).mean().item(), metrics
+    return running_loss / len(dataloader), metrics
 
 
 def plot_metrics(metrics_history, output_dir, epoch, loss_history, val_loss_history):
@@ -184,91 +184,83 @@ def start_training(model, train_loader, val_loader, best_val_loss, optimizer, de
 
         for images, labels in tqdm(train_loader, desc=f"Training Epoch {epoch + 1}"):
             images, labels = images.to(device), labels.to(device)
-
             outputs = model(images)
 
             masks = labels >= 0
             gender_loss = masked_loss(model.gender_loss, outputs["gender"].squeeze(), labels[:, 0], masks[:, 0])
             bag_loss = masked_loss(model.bag_loss, outputs["bag"].squeeze(), labels[:, 1], masks[:, 1])
             hat_loss = masked_loss(model.hat_loss, outputs["hat"].squeeze(), labels[:, 2], masks[:, 2])
-            print(gender_loss, bag_loss, hat_loss)
-            loss = 1 / 3 * gender_loss + 1 / 3 * bag_loss + 1 / 3 * hat_loss
-            loss.backward()
+            #print(gender_loss, bag_loss, hat_loss)
+
+            loss = [gender_loss, bag_loss, hat_loss]
+            loss = torch.stack(loss, dim=0)
+
+            if init_weights:
+                print("Inizializzazione pesi di GradNorm...")
+                weights = torch.ones_like(loss) / 3
+                weights = torch.nn.Parameter(weights)
+                T = weights.sum().detach()  # sum of weights
+                # Optimizer2 -> for weights
+                optimizer2 = torch.optim.Adam([weights], lr=0.01)
+                l0 = loss.detach()  # set L(0)
+                init_weights = False
+
+            # compute the weighted loss
+            weighted_loss = weights.to(device) @ loss.to(device)
+            #print(weights, weighted_loss)
+
+            # clear gradients of network
+            optimizer.zero_grad()
+            # backward pass for weigthted task loss
+            weighted_loss.backward(retain_graph=True)
+            # compute the L2 norm of the gradients for each task
+            gw = []
+            for i in range(len(loss)):
+                parameters = None
+                if i == 0:
+                    parameters = model.gender_head.parameters()
+                elif i == 1:
+                    parameters = model.bag_head.parameters()
+                elif i == 2:
+                    parameters = model.hat_head.parameters()
+                dl = torch.autograd.grad(weights[i] * loss[i], parameters, retain_graph=True, create_graph=True)[0]
+                gw.append(torch.norm(dl))
+            gw = torch.stack(gw)
+            # compute loss ratio per task
+            loss_ratio = loss.detach() / l0
+            # compute the relative inverse training rate per task
+            rt = loss_ratio / loss_ratio.mean()
+            # compute the average gradient norm
+            gw_avg = gw.mean().detach()
+            # compute the GradNorm loss
+            constant = (gw_avg * rt ** alpha).detach()
+            gradnorm_loss = torch.abs(gw - constant).sum()
+            # clear gradients of weights
+            optimizer2.zero_grad()
+            # backward pass for GradNorm
+            gradnorm_loss.backward()
+
+            # update model weights
             optimizer.step()
-            running_loss += loss.item()
-            #loss = [gender_loss, bag_loss, hat_loss]
-            #
-            ##print(loss)
-            ## total_loss = sum(loss)
-            ## print(total_loss)
-            #loss = torch.stack(loss, dim=0)
-#
-            #if init_weights:
-            #    print("Inizializzazione pesi di GradNorm...")
-            #    weights = torch.ones_like(loss) / 3
-            #    weights = torch.nn.Parameter(weights)
-            #    T = weights.sum().detach()  # sum of weights
-            #    # Optimizer2 -> for weights
-            #    optimizer2 = torch.optim.Adam([weights], lr=0.01)
-            #    l0 = loss.detach()  # set L(0)
-            #    init_weights = False
-#
-            ## compute the weighted loss
-            #weighted_loss = weights.to(device) @ loss.to(device)
-            ## print(weights, weighted_loss)
-            #
-            ## clear gradients of network
-            #optimizer.zero_grad()
-            ## backward pass for weigthted task loss
-            #weighted_loss.backward(retain_graph=True)
-            ## compute the L2 norm of the gradients for each task
-            #gw = []
-            #for i in range(len(loss)):
-            #    parameters = None
-            #    if i == 0:
-            #        parameters = model.gender_head.parameters()
-            #    elif i == 1:
-            #        parameters = model.bag_head.parameters()
-            #    elif i == 2:
-            #        parameters = model.hat_head.parameters()
-            #    dl = torch.autograd.grad(weights[i] * loss[i], parameters, retain_graph=True, create_graph=True)[0]
-            #    gw.append(torch.norm(dl))
-            #gw = torch.stack(gw)
-            ## compute loss ratio per task
-            #loss_ratio = loss.detach() / l0
-            ## compute the relative inverse training rate per task
-            #rt = loss_ratio / loss_ratio.mean()
-            ## compute the average gradient norm
-            #gw_avg = gw.mean().detach()
-            ## compute the GradNorm loss
-            #constant = (gw_avg * rt ** alpha).detach()
-            #gradnorm_loss = torch.abs(gw - constant).sum()
-            ## clear gradients of weights
-            #optimizer2.zero_grad()
-            ## backward pass for GradNorm
-            #gradnorm_loss.backward()
-#
-            ## update model weights
-            #optimizer.step()
-            ## update loss weights
-            #optimizer2.step()
-            ## renormalize weights
-            #weights = (weights / weights.sum() * T).detach()
-            #weights = torch.nn.Parameter(weights)
-            #optimizer2 = torch.optim.Adam([weights], lr=0.01)
-#
-            #running_loss += weighted_loss.item()
-#
-            ## For Plots
-            ## weight for each task
-            #log_weights.append(weights.detach().cpu().numpy().copy())
-            ## task normalized loss
-            #log_loss.append(loss_ratio.detach().cpu().numpy().copy())
+            # update loss weights
+            optimizer2.step()
+            # renormalize weights
+            weights = (weights / weights.sum() * T).detach()
+            weights = torch.nn.Parameter(weights)
+            optimizer2 = torch.optim.Adam([weights], lr=0.01)
+
+            running_loss += weighted_loss.item()
+
+            # For Plots
+            # weight for each task
+            log_weights.append(weights.detach().cpu().numpy().copy())
+            # task normalized loss
+            log_loss.append(loss_ratio.detach().cpu().numpy().copy())
 
         loss_history.append(running_loss / len(train_loader))
 
         # --- VALIDATION ---
-        weighted_val_loss, val_metrics = validate(model, val_loader, device, epoch, weights = torch.tensor([1/3,1/3,1/3]))
+        weighted_val_loss, val_metrics = validate(model, val_loader, device, epoch, weights=torch.tensor([1/3, 1/3, 1/3]))
         metrics_history.append(val_metrics)
         val_loss_history.append(weighted_val_loss)
 
@@ -311,7 +303,7 @@ def main():
     parser.add_argument('--data_dir', type=str, default='./dataset', help='Path al dataset')
     parser.add_argument('--batch_size', type=int, default=16, help='Batch size')
     parser.add_argument('--weight_decay', type=float, default=0.0001, help='Weight decay (L2 regularization)')
-    parser.add_argument('--epochs', type=int, default=50, help='Numero di epoche')
+    parser.add_argument('--epochs', type=int, default=10, help='Numero di epoche')
     parser.add_argument('--lr_backbone', type=float, default=0.0001, help='Learning rate backbone')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate classification heads')
     parser.add_argument('--momentum', type=float, default=0.9, help='Momentum')
@@ -319,11 +311,11 @@ def main():
     parser.add_argument('--checkpoint_dir', type=str, default='./classification_andrea/checkpoints',
                         help='Directory dei checkpoint')
     parser.add_argument('--resume_checkpoint', type=bool, default=False)
-    parser.add_argument('--patience', type=int, default=7)
-    parser.add_argument('--backbone', type=str, default='resnet50', help='Backbone name: resnet50 o resnet18')
-    parser.add_argument('--balancing', type=bool, default=True, help='Balancing batches')
+    parser.add_argument('--patience', type=int, default=3)
+    parser.add_argument('--backbone', type=str, default='resnet18', help='Backbone name: resnet50 o resnet18')
+    parser.add_argument('--balancing', type=bool, default=False, help='Balancing batches')
     parser.add_argument('--num_workers', type=int, default=0, help='Number of workers')
-    parser.add_argument('--optimizer', type=str, default="adam", help='adam o sgd')
+    parser.add_argument('--optimizer', type=str, default="sgd", help='adam o sgd')
     parser.add_argument('--cbam', type=bool, default=False, help='use cbum attention')
     args = parser.parse_args()
 
@@ -405,28 +397,36 @@ def main():
                                            start_epoch, args.epochs, args.checkpoint_dir, args.patience, weights, l0)
 
     # --- PLOT ---
-    sigmas = [48, 3, 54]
-    plt.figure(figsize=(16, 12))
-    for i in range(len(sigmas)):
-        plt.plot(log_weights[:, i], lw=3, label="σ = {}".format(sigmas[i]))
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=12)
-    plt.xlim(0, 28000)
-    plt.xlabel("Iters", fontsize=18)
-    plt.ylabel("Weights", fontsize=18)
-    plt.title("Adaptive Weights During Training for Each Task", fontsize=18)
-    plt.legend(fontsize=12)
-    plt.show()
+    # PLOTTING log_weights
+    # Salvare il grafico
+    # Convert log_weights to a numpy array for easier manipulation
+    log_weights_array = np.array(log_weights)
 
-    plt.figure(figsize=(16, 12))
-    plt.plot(log_loss.mean(axis=1) * 100, lw=2)
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=12)
-    plt.xlabel("Iters", fontsize=18)
-    plt.ylabel("Task-Normalized Error (%)", fontsize=18)
-    plt.title("Training Curve of NormGrad Algorithm", fontsize=18)
-    plt.show()
+    # Check if log_weights_array is valid
+    if log_weights_array.shape[0] > 0:
+        # Create x-axis values as the number of iterations
+        iterations = np.arange(log_weights_array.shape[0])
 
+        # Plot the weights evolution
+        plt.figure(figsize=(10, 6))
+        plt.plot(iterations, log_weights_array[:, 0], label="Gender Task Weight", linestyle="-", color="blue")
+        plt.plot(iterations, log_weights_array[:, 1], label="Bag Task Weight", linestyle="-", color="green")
+        plt.plot(iterations, log_weights_array[:, 2], label="Hat Task Weight", linestyle="-", color="red")
+
+        # Add labels, title, legend, and grid
+        plt.xlabel("Iterations")
+        plt.ylabel("Task Weights")
+        plt.title("Evolution of Task Weights During Training")
+        plt.legend(loc="best")
+        plt.grid(True)
+
+        # Save the figure to the specified path
+        save_path = "./classification_andrea/checkpoints/weight_evolution.png"
+        plt.savefig(save_path, dpi=300)
+        plt.close()
+        print(f"Weight evolution plot saved at: {save_path}")
+    else:
+        print("No weight data to plot.")
 
 if __name__ == "__main__":
     main()

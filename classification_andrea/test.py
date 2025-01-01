@@ -82,7 +82,7 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_dataset, batch_size=16, shuffle=False)
 
     # Caricamento del modello
-    model = PARMultiTaskNet(backbone='resnet50').to(device)
+    model = PARMultiTaskNet(backbone='resnet18').to(device)
     # model.load_state_dict(torch.load(checkpoint_path, map_location=device))
     checkpoint = torch.load(model_path, map_location=device)
     model.load_state_dict(checkpoint['model_state'])

@@ -82,7 +82,7 @@ def masked_loss(criterion, outputs, labels, mask):
     return criterion(masked_outputs, masked_labels).mean()
 
 
-def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch):
+def train_one_epoch(model, dataloader, optimizer, device, epoch):
     model.train()
     running_loss = 0.0
 
@@ -92,10 +92,12 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch):
         optimizer.zero_grad()
         outputs = model(images)
 
-        gender_loss = masked_loss(criterion, outputs["gender"].squeeze(), labels[:, 0], masks[:, 0])
-        bag_loss = masked_loss(criterion, outputs["bag"].squeeze(), labels[:, 1], masks[:, 1])
-        hat_loss = masked_loss(criterion, outputs["hat"].squeeze(), labels[:, 2], masks[:, 2])
-        #print(gender_loss, bag_loss, hat_loss)
+        gender_loss = masked_loss(model.gender_loss, outputs["gender"].squeeze(), labels[:, 0], masks[:, 0])
+        bag_loss = masked_loss(model.bag_loss, outputs["bag"].squeeze(), labels[:, 1], masks[:, 1])
+        hat_loss = masked_loss(model.hat_loss, outputs["hat"].squeeze(), labels[:, 2], masks[:, 2])
+        print(gender_loss, bag_loss, hat_loss)
+
+        # Le loss hanno tutte lo stesso peso
         loss = 1/3 * gender_loss + 1/3 * bag_loss + 1/3 * hat_loss
         loss.backward()
         optimizer.step()
@@ -105,7 +107,7 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch):
     return running_loss / len(dataloader)
 
 
-def validate(model, dataloader, criterion, device, epoch):
+def validate(model, dataloader, device, epoch):
     model.eval()
     running_loss = 0.0
 
@@ -121,9 +123,9 @@ def validate(model, dataloader, criterion, device, epoch):
             masks = labels >= 0
 
             outputs = model(images)
-            gender_loss = masked_loss(criterion, outputs["gender"].squeeze(), labels[:, 0], masks[:, 0])
-            bag_loss = masked_loss(criterion, outputs["bag"].squeeze(), labels[:, 1], masks[:, 1])
-            hat_loss = masked_loss(criterion, outputs["hat"].squeeze(), labels[:, 2], masks[:, 2])
+            gender_loss = masked_loss(model.gender_loss, outputs["gender"].squeeze(), labels[:, 0], masks[:, 0])
+            bag_loss = masked_loss(model.bag_loss, outputs["bag"].squeeze(), labels[:, 1], masks[:, 1])
+            hat_loss = masked_loss(model.hat_loss, outputs["hat"].squeeze(), labels[:, 2], masks[:, 2])
             #print(gender_loss,bag_loss,hat_loss)
             loss = 1/3 * gender_loss + 1/3 * bag_loss + 1/3 * hat_loss
             running_loss += loss.item()
@@ -192,10 +194,11 @@ def main():
     parser.add_argument('--checkpoint_dir', type=str, default='./classification_andrea/checkpoints',
                         help='Directory dei checkpoint')
     parser.add_argument('--resume_checkpoint', type=bool, default=False)
-    parser.add_argument('--patience', type=int, default=7)
+    parser.add_argument('--patience', type=int, default=3)
     parser.add_argument('--backbone', type=str, default='resnet18', help='Backbone name: resnet50 o resnet18')
-    parser.add_argument('--balancing', type=bool, default=True, help='Balancing batches')
+    parser.add_argument('--balancing', type=bool, default=False, help='Balancing batches')
     parser.add_argument('--num_workers', type=int, default=0, help='Number of workers')
+    parser.add_argument('--optimizer', type=str, default="sgd", help='adam o sgd')
     parser.add_argument('--cbam', type=bool, default=False, help='use cbam attention')
     args = parser.parse_args()
 
@@ -220,19 +223,29 @@ def main():
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, sampler=sampler)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
 
+    print("Istanziando modello")
     model = PARMultiTaskNet(backbone=args.backbone, pretrained=True, cbam=args.cbam).to(device)
     # Applica l'inizializzazione ai soli moduli delle teste
     model.gender_head.apply(initialize_weights)
     model.bag_head.apply(initialize_weights)
     model.hat_head.apply(initialize_weights)
 
-    criterion = nn.BCEWithLogitsLoss(reduction='none')  # Usa riduzione 'none' per supportare la masked loss
-    optimizer = optim.SGD([
-        {'params': model.backbone.parameters(), 'lr': args.lr * 0.1},  # Backbone con learning rate ridotto
-        {'params': model.gender_head.parameters()},  # Testa gender
-        {'params': model.bag_head.parameters()},  # Testa bag
-        {'params': model.hat_head.parameters()}  # Testa hat
-    ], lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    if args.optimizer == "adam":
+        optimizer = optim.Adam(
+            [
+                {"params": model.backbone.parameters(), "lr": args.lr * 0.1},
+                {"params": model.gender_head.parameters(), "lr": args.lr},
+                {"params": model.bag_head.parameters(), "lr": args.lr},
+                {"params": model.hat_head.parameters(), "lr": args.lr}
+            ]
+        )
+    else:
+        optimizer = optim.SGD([
+            {'params': model.backbone.parameters(), 'lr': args.lr * 0.1},  # Backbone con learning rate ridotto
+            {'params': model.gender_head.parameters()},  # Testa gender
+            {'params': model.bag_head.parameters()},  # Testa bag
+            {'params': model.hat_head.parameters()}  # Testa hat
+        ], lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
     # Scheduler
     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=3, verbose=True)
@@ -268,8 +281,8 @@ def main():
 
     print("Inizio train...")
     for epoch in range(start_epoch, args.epochs):
-        train_loss = train_one_epoch(model, train_loader, criterion, optimizer, device, epoch)
-        val_loss, val_metrics = validate(model, val_loader, criterion, device, epoch)
+        train_loss = train_one_epoch(model, train_loader, optimizer, device, epoch)
+        val_loss, val_metrics = validate(model, val_loader, device, epoch)
         metrics_history.append(val_metrics)
         loss_history.append(train_loss)
         val_loss_history.append(val_loss)
