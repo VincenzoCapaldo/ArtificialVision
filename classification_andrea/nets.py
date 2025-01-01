@@ -92,8 +92,7 @@ class ClassificationHeadCbam(nn.Module):
         # Serie di layer fully connected per il processo decisionale
         self.fc1 = nn.Linear(self.input_features, 512)  # first dense layer
         self.fc2 = nn.Linear(512, 256)  # second dense layer
-        self.fc3 = nn.Linear(256, 128)  # third dense layer
-        self.fc4 = nn.Linear(128, num_classes)  # fourth dense layer
+        self.fc3 = nn.Linear(256, num_classes)  # third dense layer
 
         # Dropout per prevenire overfitting durante l'addestramento
         self.dropout = nn.Dropout(p=0.5)
@@ -121,11 +120,10 @@ class ClassificationHeadCbam(nn.Module):
 
         # Passa attraverso i layer fully connected con ReLU e dropout
         x = F.relu(self.fc1(x))
+        x = self.dropout(x)
         x = F.relu(self.fc2(x))
-        # x = self.dropout(x)
-        x = F.relu(self.fc3(x))
-        x = self.dropout(x)  # Dropout applicato prima del layer finale
-        x = self.fc4(x)  # Layer finale
+        x = self.dropout(x)
+        x = self.fc3(x)
 
         return x
 
@@ -159,7 +157,6 @@ class ClassificationHead(nn.Module):
         self.fc1 = nn.Linear(self.input_features, 512)  # first dense layer
         self.fc2 = nn.Linear(512, 256)  # second dense layer
         self.fc3 = nn.Linear(256, num_classes)  # third dense layer
-        # self.fc4 = nn.Linear(128, num_classes)  # fourth dense layer
 
         # Dropout per prevenire overfitting durante l'addestramento
         self.dropout = nn.Dropout(p=0.5)
@@ -185,9 +182,9 @@ class ClassificationHead(nn.Module):
         x = F.relu(self.fc1(x))
         x = self.dropout(x)
         x = F.relu(self.fc2(x))
-        x = self.dropout(x)  # Dropout applicato prima del layer finale
+        x = self.dropout(x)
         x = self.fc3(x)
-        #x = self.fc4(x)  # Layer finale
+
         return x
 
 
@@ -197,10 +194,12 @@ class PARMultiTaskNet(nn.Module):
         # defining backbone for feature extraction
         self.backbone = Backbone(name=backbone, pretrained=pretrained)
         if cbam:
+            print("Using CBAM attention")
             self.gender_head = ClassificationHeadCbam(1, self.backbone.out_features)
             self.bag_head = ClassificationHeadCbam(1, self.backbone.out_features)
             self.hat_head = ClassificationHeadCbam(1, self.backbone.out_features)
         else:
+            print("Using MultiheadAttention attention")
             self.gender_head = ClassificationHead(1, self.backbone.out_features)
             self.bag_head = ClassificationHead(1, self.backbone.out_features)
             self.hat_head = ClassificationHead(1, self.backbone.out_features)

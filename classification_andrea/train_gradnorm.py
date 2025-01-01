@@ -3,7 +3,6 @@ from collections import Counter
 import torch.nn as nn
 import torch.optim as optim
 from matplotlib import pyplot as plt
-from torch.optim import AdamW
 from torch.utils.data import DataLoader, WeightedRandomSampler, SubsetRandomSampler
 import argparse
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
@@ -29,24 +28,16 @@ def masked_loss(criterion, outputs, labels, mask):
         return torch.tensor(0.0, device=outputs.device).mean()
     return criterion(masked_outputs, masked_labels).mean()
 
-def initialize_weights_xavier(model):
-    for module in model.gender_head.modules():
-        if isinstance(module, (nn.Linear, nn.Conv2d)):
-            nn.init.xavier_uniform_(module.weight)
-            if module.bias is not None:
-                nn.init.constant_(module.bias, 0)
 
-    for module in model.bag_head.modules():
-        if isinstance(module, (nn.Linear, nn.Conv2d)):
-            nn.init.xavier_uniform_(module.weight)
-            if module.bias is not None:
-                nn.init.constant_(module.bias, 0)
-
-    for module in model.hat_head.modules():
-        if isinstance(module, (nn.Linear, nn.Conv2d)):
-            nn.init.xavier_uniform_(module.weight)
-            if module.bias is not None:
-                nn.init.constant_(module.bias, 0)
+def initialize_weights(module):
+    """
+    Inizializza i pesi del modello usando Xavier Uniform.
+    :param module: Modulo PyTorch da inizializzare
+    """
+    if isinstance(module, nn.Linear):
+        nn.init.xavier_uniform_(module.weight)
+        if module.bias is not None:
+            nn.init.constant_(module.bias, 0)
 
 
 def calculate_class_weights(dataset):
@@ -82,7 +73,7 @@ def calculate_class_weights(dataset):
             # Calcola il peso combinato come media dei pesi validi
             combined_weight = np.mean([gender_weight, bag_weight, hat_weight])
 
-        #print(labels,combined_weight)
+        # print(labels,combined_weight)
 
         sample_weights.append(combined_weight)
 
@@ -187,7 +178,7 @@ def start_training(model, train_loader, val_loader, best_val_loss, optimizer, de
 
     # --- TRAINING ---
     for epoch in range(start_epoch, epochs):
-        print(f'Epoch {epoch+1}/{epochs}')
+        print(f'Epoch {epoch + 1}/{epochs}')
         model.train()
         running_loss = 0.0
 
@@ -200,78 +191,84 @@ def start_training(model, train_loader, val_loader, best_val_loss, optimizer, de
             gender_loss = masked_loss(model.gender_loss, outputs["gender"].squeeze(), labels[:, 0], masks[:, 0])
             bag_loss = masked_loss(model.bag_loss, outputs["bag"].squeeze(), labels[:, 1], masks[:, 1])
             hat_loss = masked_loss(model.hat_loss, outputs["hat"].squeeze(), labels[:, 2], masks[:, 2])
-            loss = [gender_loss, bag_loss, hat_loss]
-
-            #print(loss)
-            #total_loss = sum(loss)
-            #print(total_loss)
-            loss = torch.stack(loss, dim=0)
-
-            if init_weights:
-                print("Inizializzazione pesi di GradNorm...")
-                weights = torch.ones_like(loss) / 3
-                weights = torch.nn.Parameter(weights)
-                T = weights.sum().detach()  # sum of weights
-                # Optimizer2 -> for weights
-                optimizer2 = torch.optim.Adam([weights], lr=0.01)
-                l0 = loss.detach()  # set L(0)
-                init_weights = False
-
-            # compute the weighted loss
-            weighted_loss = weights.to(device) @ loss.to(device)
-            #print(weights, weighted_loss)
-            # clear gradients of network
-            optimizer.zero_grad()
-            # backward pass for weigthted task loss
-            weighted_loss.backward(retain_graph=True)
-            # compute the L2 norm of the gradients for each task
-            gw = []
-            for i in range(len(loss)):
-                parameters = None
-                if i == 0:
-                    parameters = model.gender_head.parameters()
-                elif i == 1:
-                    parameters = model.bag_head.parameters()
-                elif i == 2:
-                    parameters = model.hat_head.parameters()
-                dl = torch.autograd.grad(weights[i] * loss[i], parameters, retain_graph=True, create_graph=True)[0]
-                gw.append(torch.norm(dl))
-            gw = torch.stack(gw)
-            # compute loss ratio per task
-            loss_ratio = loss.detach() / l0
-            # compute the relative inverse training rate per task
-            rt = loss_ratio / loss_ratio.mean()
-            # compute the average gradient norm
-            gw_avg = gw.mean().detach()
-            # compute the GradNorm loss
-            constant = (gw_avg * rt ** alpha).detach()
-            gradnorm_loss = torch.abs(gw - constant).sum()
-            # clear gradients of weights
-            optimizer2.zero_grad()
-            # backward pass for GradNorm
-            gradnorm_loss.backward()
-
-            # update model weights
+            print(gender_loss, bag_loss, hat_loss)
+            loss = 1 / 3 * gender_loss + 1 / 3 * bag_loss + 1 / 3 * hat_loss
+            loss.backward()
             optimizer.step()
-            # update loss weights
-            optimizer2.step()
-            # renormalize weights
-            weights = (weights / weights.sum() * T).detach()
-            weights = torch.nn.Parameter(weights)
-            optimizer2 = torch.optim.Adam([weights], lr=0.01)
-
-            running_loss += weighted_loss.item()
-
-            # For Plots
-            # weight for each task
-            log_weights.append(weights.detach().cpu().numpy().copy())
-            # task normalized loss
-            log_loss.append(loss_ratio.detach().cpu().numpy().copy())
+            running_loss += loss.item()
+            #loss = [gender_loss, bag_loss, hat_loss]
+            #
+            ##print(loss)
+            ## total_loss = sum(loss)
+            ## print(total_loss)
+            #loss = torch.stack(loss, dim=0)
+#
+            #if init_weights:
+            #    print("Inizializzazione pesi di GradNorm...")
+            #    weights = torch.ones_like(loss) / 3
+            #    weights = torch.nn.Parameter(weights)
+            #    T = weights.sum().detach()  # sum of weights
+            #    # Optimizer2 -> for weights
+            #    optimizer2 = torch.optim.Adam([weights], lr=0.01)
+            #    l0 = loss.detach()  # set L(0)
+            #    init_weights = False
+#
+            ## compute the weighted loss
+            #weighted_loss = weights.to(device) @ loss.to(device)
+            ## print(weights, weighted_loss)
+            #
+            ## clear gradients of network
+            #optimizer.zero_grad()
+            ## backward pass for weigthted task loss
+            #weighted_loss.backward(retain_graph=True)
+            ## compute the L2 norm of the gradients for each task
+            #gw = []
+            #for i in range(len(loss)):
+            #    parameters = None
+            #    if i == 0:
+            #        parameters = model.gender_head.parameters()
+            #    elif i == 1:
+            #        parameters = model.bag_head.parameters()
+            #    elif i == 2:
+            #        parameters = model.hat_head.parameters()
+            #    dl = torch.autograd.grad(weights[i] * loss[i], parameters, retain_graph=True, create_graph=True)[0]
+            #    gw.append(torch.norm(dl))
+            #gw = torch.stack(gw)
+            ## compute loss ratio per task
+            #loss_ratio = loss.detach() / l0
+            ## compute the relative inverse training rate per task
+            #rt = loss_ratio / loss_ratio.mean()
+            ## compute the average gradient norm
+            #gw_avg = gw.mean().detach()
+            ## compute the GradNorm loss
+            #constant = (gw_avg * rt ** alpha).detach()
+            #gradnorm_loss = torch.abs(gw - constant).sum()
+            ## clear gradients of weights
+            #optimizer2.zero_grad()
+            ## backward pass for GradNorm
+            #gradnorm_loss.backward()
+#
+            ## update model weights
+            #optimizer.step()
+            ## update loss weights
+            #optimizer2.step()
+            ## renormalize weights
+            #weights = (weights / weights.sum() * T).detach()
+            #weights = torch.nn.Parameter(weights)
+            #optimizer2 = torch.optim.Adam([weights], lr=0.01)
+#
+            #running_loss += weighted_loss.item()
+#
+            ## For Plots
+            ## weight for each task
+            #log_weights.append(weights.detach().cpu().numpy().copy())
+            ## task normalized loss
+            #log_loss.append(loss_ratio.detach().cpu().numpy().copy())
 
         loss_history.append(running_loss / len(train_loader))
 
         # --- VALIDATION ---
-        weighted_val_loss, val_metrics = validate(model, val_loader, device, epoch, weights)
+        weighted_val_loss, val_metrics = validate(model, val_loader, device, epoch, weights = torch.tensor([1/3,1/3,1/3]))
         metrics_history.append(val_metrics)
         val_loss_history.append(weighted_val_loss)
 
@@ -287,7 +284,7 @@ def start_training(model, train_loader, val_loader, best_val_loss, optimizer, de
             best_val_loss = weighted_val_loss
             patience_counter = 0
             checkpoint = {
-                'epoch': epoch+1,
+                'epoch': epoch + 1,
                 'model_state': model.state_dict(),
                 'optimizer_state': optimizer.state_dict(),
                 'best_val_loss': best_val_loss,
@@ -305,7 +302,7 @@ def start_training(model, train_loader, val_loader, best_val_loss, optimizer, de
             print("Early stopping triggered")
             break
 
-        print("Pesi a fine epoca:",weights)
+        print("Pesi a fine epoca:", weights)
     return log_weights, log_loss
 
 
@@ -319,7 +316,7 @@ def main():
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate classification heads')
     parser.add_argument('--momentum', type=float, default=0.9, help='Momentum')
     parser.add_argument('--device', type=str, default='cuda', help='Device: cuda o cpu')
-    parser.add_argument('--checkpoint_dir', type=str, default='./classification2_andrea/checkpoints',
+    parser.add_argument('--checkpoint_dir', type=str, default='./classification_andrea/checkpoints',
                         help='Directory dei checkpoint')
     parser.add_argument('--resume_checkpoint', type=bool, default=False)
     parser.add_argument('--patience', type=int, default=7)
@@ -352,11 +349,13 @@ def main():
 
     print("Istanziando modello")
     model = PARMultiTaskNet(backbone=args.backbone, pretrained=True, cbam=args.cbam).to(device)
-    # Applicazione dell'inizializzazione Xavier
-    initialize_weights_xavier(model)
+    # Applica l'inizializzazione ai soli moduli delle teste
+    model.gender_head.apply(initialize_weights)
+    model.bag_head.apply(initialize_weights)
+    model.hat_head.apply(initialize_weights)
 
     if args.optimizer == "adam":
-        optimizer = AdamW(
+        optimizer = optim.Adam(
             [
                 {"params": model.backbone.parameters(), "lr": args.lr_backbone},
                 {"params": model.gender_head.parameters(), "lr": args.lr},
@@ -402,11 +401,11 @@ def main():
         l0 = None
 
     print("Inizio train...")
-    log_weights, log_loss = start_training(model, train_loader, val_loader, best_val_loss, optimizer, device, start_epoch, args.epochs, args.checkpoint_dir, args.patience, weights, l0)
-
+    log_weights, log_loss = start_training(model, train_loader, val_loader, best_val_loss, optimizer, device,
+                                           start_epoch, args.epochs, args.checkpoint_dir, args.patience, weights, l0)
 
     # --- PLOT ---
-    sigmas = [48,3,54]
+    sigmas = [48, 3, 54]
     plt.figure(figsize=(16, 12))
     for i in range(len(sigmas)):
         plt.plot(log_weights[:, i], lw=3, label="σ = {}".format(sigmas[i]))
@@ -427,6 +426,7 @@ def main():
     plt.ylabel("Task-Normalized Error (%)", fontsize=18)
     plt.title("Training Curve of NormGrad Algorithm", fontsize=18)
     plt.show()
+
 
 if __name__ == "__main__":
     main()

@@ -9,7 +9,7 @@ import argparse
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from tqdm import tqdm
 from dataset import TrainDataset, ValidationDataset
-from classification_andrea.nets import PARMultiTaskNet
+from nets import PARMultiTaskNet
 import torch
 import numpy as np
 
@@ -22,7 +22,7 @@ def calculate_class_weights(dataset):
     """
     # Calcolati da preprocess con seed=65464
     gender_dist = Counter({0: 49383, 1: 18952, -1: 6129})
-    bag_dist = Counter({0: 44237, -1: 21829, 1: 8398})
+    bag_dist = Counter({0: 44238, -1: 21808, 1: 8418})
     hat_dist = Counter({0: 54941, -1: 11838, 1: 7685})
 
     scale_factor = 1000
@@ -89,14 +89,13 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch):
     for images, labels in tqdm(dataloader, desc=f"Training Epoch {epoch + 1}"):
         images, labels = images.to(device), labels.to(device)
         masks = labels >= 0
-
         optimizer.zero_grad()
         outputs = model(images)
 
         gender_loss = masked_loss(criterion, outputs["gender"].squeeze(), labels[:, 0], masks[:, 0])
         bag_loss = masked_loss(criterion, outputs["bag"].squeeze(), labels[:, 1], masks[:, 1])
         hat_loss = masked_loss(criterion, outputs["hat"].squeeze(), labels[:, 2], masks[:, 2])
-        print(gender_loss, bag_loss, hat_loss)
+        #print(gender_loss, bag_loss, hat_loss)
         loss = 1/3 * gender_loss + 1/3 * bag_loss + 1/3 * hat_loss
         loss.backward()
         optimizer.step()
@@ -186,7 +185,7 @@ def main():
     parser.add_argument('--data_dir', type=str, default='./dataset', help='Path al dataset')
     parser.add_argument('--batch_size', type=int, default=16, help='Batch size')
     parser.add_argument('--weight_decay', type=float, default=0.0001, help='Weight decay (L2 regularization)')
-    parser.add_argument('--epochs', type=int, default=50, help='Numero di epoche')
+    parser.add_argument('--epochs', type=int, default=10, help='Numero di epoche')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
     parser.add_argument('--momentum', type=float, default=0.9, help='Momentum')
     parser.add_argument('--device', type=str, default='cuda', help='Device: cuda o cpu')
@@ -194,10 +193,10 @@ def main():
                         help='Directory dei checkpoint')
     parser.add_argument('--resume_checkpoint', type=bool, default=False)
     parser.add_argument('--patience', type=int, default=7)
-    parser.add_argument('--backbone', type=str, default='resnet50', help='Backbone name: resnet50 o resnet18')
+    parser.add_argument('--backbone', type=str, default='resnet18', help='Backbone name: resnet50 o resnet18')
     parser.add_argument('--balancing', type=bool, default=True, help='Balancing batches')
     parser.add_argument('--num_workers', type=int, default=0, help='Number of workers')
-    parser.add_argument('--cbam', type=bool, default=False, help='use cbum attention')
+    parser.add_argument('--cbam', type=bool, default=False, help='use cbam attention')
     args = parser.parse_args()
 
     device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
