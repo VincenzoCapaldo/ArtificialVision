@@ -37,20 +37,15 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
     # Open the video file
     cap = cv2.VideoCapture(video_path)
     fps = int(cap.get(cv2.CAP_PROP_FPS)+1)
-    if real_time:
-    # Calculating the time per frame, needed for real time constraint
-        ms_per_frame = 1/fps
+
     # Store the track history (for each ID, its trajectory)
     track_history = defaultdict(lambda: [])
     first_frame = True
-
-    lista_attraversamenti = {}  # Stores the lines traversed by each ID
     frame_count = 0
-    pedestrian_attributes = {}
-    pedestrian_attribute = []
+
     # Caricamento del modello per la classificazione
-    classification = PARMultiTaskNet(backbone_name='resnet50', pretrained=False).to(device)
-    checkpoint_path = './models/resnet50 - i pesi della backbone si aggiornano come le teste.pth'
+    classification = PARMultiTaskNet(backbone='resnet50', pretrained=False).to(device)
+    checkpoint_path = './models/resnet50 (modello GOAT senza crop).pth'
     checkpoint = torch.load(checkpoint_path, map_location=device)
     classification.load_state_dict(checkpoint['model_state'])
     classification.eval()
@@ -61,6 +56,10 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
         T.ToTensor(),
         T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
+
+    lista_attraversamenti = {}  # Stores the lines traversed by each ID
+    lista_persone = []
+    pedestrian_attributes = {}
 
     # Loop through the video frames
     while cap.isOpened():
@@ -95,7 +94,6 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
                 for line in lines_info:
                     text.append(f"Passages for line {line['line_id']}: {line['crossing_counting']}")
 
-
                 # Draw red bounding box
                 gui.add_bounding_box(annotated_frame, top_left_corner, bottom_right_corner)
                 # Draw the tracked people ID
@@ -125,34 +123,34 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
                         lista_attraversamenti[track_id] = []
                     lista_attraversamenti[track_id].extend(crossed_line_id)
 
-                # crezione delle frasi da mettere sotto al bounding box
-
-
-                if (frame_count % fps == 0):
+                if (frame_count % fps == 0): # ogni secondo
                     # Inferenza
                     screen = gui.screen(frame, top_left_corner, bottom_right_corner)
                     image = transforms(Image.fromarray(screen).convert('RGB')).to(device)
                     image = image.unsqueeze(0)  # Aggiunge una dimensione batch
                     outputs = classification(image)
-                    p = []
+
+                    prediction = {}
+                    probability = {}
                     for task in ["gender", "bag", "hat"]:
-                        preds = (torch.sigmoid(outputs[task]) > 0.5).int().cpu().numpy()
-                        p.append(preds)
+                        probability[task] = torch.sigmoid(outputs[task])
+                        prediction[task] = (probability[task] > 0.5).int().cpu().numpy()
 
                     # Aggiorna il dizionario degli attributi
-                    pedestrian_attributes[track_id] = {
-                        "gender": p[0],
-                        "bag": p[1],
-                        "hat": p[2],
-                        "crossed_lines": lista_attraversamenti.get(track_id, [])
+                    pedestrian_attributes[(track_id, frame_count)] = {
+                        "prob_gender": probability["gender"],
+                        "prob_bag": probability["bag"],
+                        "prob_hat": probability["hat"],
+                        "gender": prediction["gender"],
+                        "bag": prediction["bag"],
+                        "hat": prediction["hat"]
                     }
 
                 # Se track_id non è presente, viene creato un nuovo dizionario con i seguenti valori predefiniti
                 attributes = pedestrian_attributes.get(track_id, {
                     "gender": False,
                     "bag": False,
-                    "hat": False,
-                    "crossed_lines": []
+                    "hat": False
                 })
 
                 # Costruisci la lista di attributi da mostrare
@@ -168,13 +166,15 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
                     pedestrian_attribute.append("Hat")
                 if attributes["bag"] and attributes["hat"]:
                     pedestrian_attribute.append("Bag Hat")
-                pedestrian_attribute.append(f"[{', '.join(map(str, attributes['crossed_lines']))}]")
+
+                pedestrian_attribute.append(f"[{', '.join(map(str, lista_attraversamenti.get(track_id, [])))}]")
 
                 # Disegna gli attributi sotto il bounding box
                 gui.add_info_scene(annotated_frame, pedestrian_attribute, bottom_left_corner, 0.5, 2)
 
-                # Add a new person
-                output_writer.add_person(track_id)
+                # Add a new person (se non è già presente)
+                if track_id not in lista_persone:
+                    lista_persone.append(track_id)
 
             frame_count += 1
             # Display the annotated frame
@@ -190,6 +190,7 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
         # Real-time synchronization management
         end_time = time.time()
         if real_time:
+            ms_per_frame = 1 / fps
             elapsed_time = end_time - start_time
             discard_frames = int(elapsed_time/ms_per_frame)+1
             d2 = int(discard_frames + ((discard_frames * (end_read_time-start_read_time))/ms_per_frame))+1
@@ -198,21 +199,35 @@ def start_track(device, model_path="models/yolov8m.pt", video_path="videos/Atrio
                 d2 -= 1
             first_frame = False
 
+    # Calcolo della media ponderataper ogni persona
+    probability_sum_gender = []
+    denominator_gender = []
+    probability_sum_bag = []
+    denominator_bag = []
+    probability_sum_hat = []
+    denominator_hat = []
+    for (id, frame), attributes in pedestrian_attributes.items():
+        probability_sum_gender[id] += round(attributes["prob_gender"].item(), 2) * attributes["gender"]
+        denominator_gender[id] += round(attributes["prob_gender"].item(), 2)
+        probability_sum_bag[id] += round(attributes["prob_bag"].item(), 2) * attributes["bag"]
+        denominator_bag[id] += round(attributes["prob_bag"].item(), 2)
+        probability_sum_hat[id] += round(attributes["prob_hat"].item(), 2) * attributes["hat"]
+        denominator_hat[id] += round(attributes["prob_hat"].item(), 2)
 
+    # Scrittura dei risultati su file
+    for id in lista_persone:
+        output_writer.add_person(id)
+        gender = 1 if (probability_sum_gender[id] / denominator_gender[id]) > 0.5 else 0
+        output_writer.set_gender(id, gender)
+        bag = 1 if (probability_sum_bag[id] / denominator_bag[id]) > 0.5 else 0
+        output_writer.set_bag(id, bag)
+        hat = 1 if (probability_sum_hat[id] / denominator_hat[id]) > 0.5 else 0
+        output_writer.set_hat(id, hat)
 
     # Add trajectory for all the people
     for id in lista_attraversamenti:
         trajectory = lista_attraversamenti[id]
         output_writer.set_trajectory(id, trajectory)
-
-    # Add classification information for all the people
-    for id in pedestrian_attributes:
-        gender = pedestrian_attributes[id]["gender"]
-        output_writer.set_gender(id, gender)
-        bag = pedestrian_attributes[id]["bag"]
-        output_writer.set_bag(id, bag)
-        hat = pedestrian_attributes[id]["hat"]
-        output_writer.set_hat(id, hat)
 
     # Print people info on "./output/output.json" file
     output_writer.write_output()
