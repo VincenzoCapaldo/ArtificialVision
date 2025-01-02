@@ -47,9 +47,9 @@ def calculate_class_weights(dataset):
     :return: Array di pesi per ogni campione
     """
     # Calcolati da preprocess con seed=65464
-    gender_dist = Counter({0: 49383, 1: 18952, -1: 6129})
-    bag_dist = Counter({0: 44237, -1: 21829, 1: 8398})
-    hat_dist = Counter({0: 54941, -1: 11838, 1: 7685})
+    gender_dist = Counter({0: 49386, 1: 18968, -1: 6110})
+    bag_dist = Counter({0: 44246, -1: 21773, 1: 8445})
+    hat_dist = Counter({0: 54983, -1: 11794, 1: 7687})
 
     scale_factor = 1000
     gender_weights = {label: (1.0 / count) * scale_factor for label, count in gender_dist.items() if label != -1}
@@ -303,7 +303,7 @@ def main():
     parser.add_argument('--data_dir', type=str, default='./dataset', help='Path al dataset')
     parser.add_argument('--batch_size', type=int, default=16, help='Batch size')
     parser.add_argument('--weight_decay', type=float, default=0.0001, help='Weight decay (L2 regularization)')
-    parser.add_argument('--epochs', type=int, default=10, help='Numero di epoche')
+    parser.add_argument('--epochs', type=int, default=20, help='Numero di epoche')
     parser.add_argument('--lr_backbone', type=float, default=0.0001, help='Learning rate backbone')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate classification heads')
     parser.add_argument('--momentum', type=float, default=0.9, help='Momentum')
@@ -311,12 +311,13 @@ def main():
     parser.add_argument('--checkpoint_dir', type=str, default='./classification_andrea/checkpoints',
                         help='Directory dei checkpoint')
     parser.add_argument('--resume_checkpoint', type=bool, default=False)
-    parser.add_argument('--patience', type=int, default=3)
-    parser.add_argument('--backbone', type=str, default='resnet18', help='Backbone name: resnet50 o resnet18')
-    parser.add_argument('--balancing', type=bool, default=False, help='Balancing batches')
+    parser.add_argument('--patience', type=int, default=7
+                        )
+    parser.add_argument('--backbone', type=str, default='resnet50', help='Backbone name: resnet50 o resnet18')
+    parser.add_argument('--balancing', type=bool, default=True, help='Balancing batches')
     parser.add_argument('--num_workers', type=int, default=0, help='Number of workers')
     parser.add_argument('--optimizer', type=str, default="sgd", help='adam o sgd')
-    parser.add_argument('--cbam', type=bool, default=False, help='use cbum attention')
+    parser.add_argument('--attention', type=bool, default=True, help='use cbum attention')
     args = parser.parse_args()
 
     device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
@@ -340,7 +341,7 @@ def main():
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
     print("Istanziando modello")
-    model = PARMultiTaskNet(backbone=args.backbone, pretrained=True, cbam=args.cbam).to(device)
+    model = PARMultiTaskNet(backbone=args.backbone, pretrained=True, attention=args.attention).to(device)
     # Applica l'inizializzazione ai soli moduli delle teste
     model.gender_head.apply(initialize_weights)
     model.bag_head.apply(initialize_weights)
