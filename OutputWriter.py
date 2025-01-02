@@ -30,19 +30,6 @@ class OutputWriter:
                 }
         self.people.append(person)
 
-    def set_trajectory(self, person_id, trajectory):
-        """
-        Update the trajectory of a person identified by person_id.
-
-        :param person_id: int, person ID
-        :param trajectory: list, a list of virtual line IDs
-        """
-        for person in self.people:
-            if person["id"] == person_id:
-                person["trajectory"] = trajectory
-                return
-        raise ValueError(f"Person with ID {person_id} not found.")
-
     def set_gender(self, person_id, gender):
         """
         Update the gender of a person identified by person_id.
@@ -101,10 +88,15 @@ class OutputWriter:
         with open(filename, 'w') as file:
             json.dump(output, file, indent=4)
 
+    def set_trajectory(self, person_id, trajectory):
+        """
+        Update the trajectory of a person identified by person_id.
 
-# Test, da eliminare prima della consegna.
-# if __name__ == "__main__":
-#     writer = OutputWriter()
-#     writer.add_person(1, "male", True, False, [1, 2, 3, 4])
-#     writer.add_person(2, "female", False, True, [4, 1, 3, 1, 2])
-#     writer.write_output("output.json")
+        :param person_id: int, person ID
+        :param trajectory: list, a list of virtual line IDs
+        """
+        for person in self.people:
+            if person["id"] == person_id:
+                person["trajectory"] = trajectory
+                return
+        raise ValueError(f"Person with ID {person_id} not found.")
