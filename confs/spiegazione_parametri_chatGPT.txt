@@ -1,0 +1,67 @@
+track_high_thresh (Predefinito: 0.25)
+Descrizione: Questa è la soglia di confidenza per il primo passo di associazione.
+Effetto:
+    Aumentare il valore riduce i falsi positivi, ma può anche comportare la perdita di alcune rilevazioni.
+Uso consigliato:
+    Usa un valore più alto in ambienti con molti oggetti rumorosi o falsi rilevamenti.
+    Usa un valore più basso per non perdere rilevazioni in scenari complessi.
+
+track_low_thresh (Predefinito: 0.1)
+Descrizione: La soglia per il secondo passo di associazione, che consente di considerare più rilevazioni.
+Effetto:
+    Abbassare questo valore include più rilevazioni incerte nel processo di tracciamento.
+Uso consigliato:
+    Diminuiscilo in scene dove ci sono molti oggetti con confidenze basse.
+    Aumentalo se vuoi evitare di considerare oggetti con bassa confidenza.
+
+new_track_thresh (Predefinito: 0.25)
+Descrizione: Soglia che controlla quando iniziare un nuovo tracciamento per un oggetto rilevato.
+Effetto:
+    Valori bassi fanno partire più tracciamenti.
+    Valori alti richiedono una confidenza maggiore prima di avviare un nuovo tracciamento.
+Uso consigliato:
+    Usa un valore basso se vuoi catturare ogni possibile oggetto.
+    Usa un valore alto per ridurre la creazione di tracciamenti non necessari.
+
+track_buffer (Predefinito: 30)
+Descrizione: Numero di frame per i quali le informazioni di un tracciamento sono mantenute prima di considerare l'oggetto "perso".
+Effetto:
+    Un buffer più alto permette di mantenere le tracce più a lungo, utile per oggetti temporaneamente oscurati.
+Uso consigliato:
+    Aumentalo per scene con occlusioni frequenti.
+    Diminuiscilo per avere un tracker più reattivo.
+
+gmc_method (Predefinito: sparseOptFlow)
+Descrizione: Metodo per la compensazione del movimento globale della telecamera (GMC).
+Opzioni disponibili:
+    sparseOptFlow: Metodo basato sul flusso ottico sparso.
+    sift o orb: Tecniche basate su punti di interesse.
+    ecc: Metodo avanzato di compensazione globale.
+    None: Nessuna compensazione.
+Uso consigliato:
+    Usa sparseOptFlow o ecc per scene con movimento della telecamera.
+    Disattivalo (None) per telecamere fisse.
+
+proximity_thresh (Predefinito: 0.5)
+Descrizione: Soglia di prossimità per decidere se due oggetti sono abbastanza vicini da essere considerati lo stesso.
+Effetto:
+    Valori bassi rendono il tracker più selettivo.
+    Valori alti considerano oggetti più distanti come lo stesso.
+Uso consigliato:
+    Usa un valore più alto in scene affollate per mantenere il tracciamento di oggetti che si spostano rapidamente.
+
+appearance_thresh (Predefinito: 0.25)
+Descrizione: Soglia di similarità visiva per associare oggetti in base all'aspetto.
+Effetto:
+    Valori bassi possono causare errori di associazione.
+    Valori alti migliorano l'accuratezza, ma possono ignorare oggetti con somiglianze visive minime.
+Uso consigliato:
+    Usa valori più alti in scene con oggetti visivamente simili.
+
+with_reid (Predefinito: False)
+Descrizione: Booleano che specifica se integrare o meno l'aspetto (ReID - Re-Identification).
+Effetto:
+    Se True, utilizza caratteristiche visive per mantenere l'identità degli oggetti durante occlusioni o riapparizioni.
+    Se False, si basa solo sul movimento.
+Uso consigliato:
+    Attivalo in scene dove gli oggetti escono/rientrano frequentemente o sono occlusi.
