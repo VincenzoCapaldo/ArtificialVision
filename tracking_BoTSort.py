@@ -182,6 +182,10 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
             frame_count += 1
             # Display the annotated frame
             if show:
+                # Crea una finestra ridimensionabile
+                cv2.namedWindow("YOLO Tracking", cv2.WINDOW_NORMAL)
+                # Imposta la finestra a schermo intero
+                cv2.setWindowProperty("YOLO Tracking", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
                 cv2.imshow("YOLO Tracking", annotated_frame)
 
             # Break the loop if 'q' is pressed
