@@ -4,52 +4,55 @@ import json
 import cv2
 from gui_utils import draw_lines_on_frame
 
-
 def real_to_pixel(x_real, y_real, config_file="confs/camera_config.json"):
     """
-    Converte le coordinate reali (x, y) in coordinate di pixel nell'immagine.
+    Converts real-world (x, y) coordinates to pixel coordinates on the image plane.
 
-    Questa funzione applica una serie di trasformazioni (compreso yaw, pitch, e roll) per proiettare
-    le coordinate reali (x, y) nello spazio 3D in coordinate in pixel nel piano 2D dell'immagine,
-    utilizzando i parametri della fotocamera caricati da un file di configurazione JSON.
+    This function applies a series of transformations (including yaw, pitch, and roll)
+    to project the real-world (x, y) coordinates in 3D space onto pixel coordinates in the 2D image plane,
+    using camera parameters loaded from a configuration file.
 
-    Parametri:
+    Parameters:
     -----------
     x_real : numpy.ndarray
-        Vettore contenente le coordinate x reali dei punti da proiettare.
+        Vector containing the real-world x coordinates of the points to be projected.
 
     y_real : numpy.ndarray
-        Vettore contenente le coordinate y reali dei punti da proiettare.
+        Vector containing the real-world y coordinates of the points to be projected.
 
-    config_file : str, opzionale
-        Percorso del file di configurazione JSON che contiene i parametri della fotocamera (default è "confs/camera_config.json").
+    config_file : str, optional
+        Path to the configuration file containing camera parameters.
 
-    Ritorna:
+    Returns:
     --------
     u : numpy.ndarray
-        Vettore delle coordinate x in pixel nel piano dell'immagine.
+        Vector of x coordinates in pixels on the image plane.
 
     v : numpy.ndarray
-        Vettore delle coordinate y in pixel nel piano dell'immagine.
+        Vector of y coordinates in pixels on the image plane.
     """
-    # Carica i parametri dal file di configurazione JSON
+
+    # Load camera parameters from the configuration file
     with open(config_file, 'r') as f:
         config = json.load(f)
 
-    # Parametri della fotocamera dal file di configurazione
-    f = config['focal_length']  # lunghezza focale in metri
-    U = config['image_width']  # larghezza dell'immagine in pixel
-    V = config['image_height']  # altezza dell'immagine in pixel
-    yaw = config['yaw'] * pi / 180  # rotazione Yaw in radianti
-    roll = config['roll'] * pi / 180  # rotazione Roll in radianti
-    pitch = config['pitch'] * pi / 180  # rotazione Pitch in radianti
-    xc, yc, zc = config['camera_position']  # posizione della fotocamera nel sistema mondo
+    # Camera parameters from the configuration file
+    f = config['focal_length']  # Focal length in meters
+    U = config['image_width']   # Image width in pixels
+    V = config['image_height']  # Image height in pixels
+    yaw = config['yaw'] * pi / 180  # Yaw rotation in radians
+    roll = config['roll'] * pi / 180  # Roll rotation in radians
+    pitch = config['pitch'] * pi / 180  # Pitch rotation in radians
+    xc, yc, zc = config['camera_position']  # Camera position in the world coordinate system
+    s_w = config['sensor_width']  # Sensor width
+    s_h = config['sensor_height']  # Sensor height
 
-    # Parametri del sensore
-    s_w = config['sensor_width']  # larghezza sensore
-    s_h = config['sensor_height']  # altezza sensore
+    # Transform real-world coordinates into the camera's coordinate system
+    real_coordinates = np.vstack((x_real, y_real, np.zeros_like(x_real))) # Add z=0 for the points
+    camera_position = np.array([xc, yc, zc]).reshape(3, 1)
+    translated_coordinates = real_coordinates - camera_position  # Translation to move the point to the camera's origin
 
-    # Matrici di rotazione
+    # Rotation matrices
     R_yaw = np.array([[cos(yaw), sin(yaw), 0],
                       [-sin(yaw), cos(yaw), 0],
                       [0, 0, 1]])
@@ -62,36 +65,32 @@ def real_to_pixel(x_real, y_real, config_file="confs/camera_config.json"):
                         [0, cos(pitch), sin(pitch)],
                         [0, -sin(pitch), cos(pitch)]])
 
-    # Matrize di rotazione totale
+    # Total rotation matrix
     R = R_roll @ R_pitch @ R_yaw
 
-    # Trasformazione delle coordinate reali nel sistema della fotocamera
-    real_coordinates = np.vstack((x_real, y_real, np.zeros_like(x_real)))  # Aggiungi z=0 per i punti
-    camera_position = np.array([xc, yc, zc]).reshape(3, 1)
-    translated_coordinates = real_coordinates - camera_position  # Traslazione per portare il punto nell'origine della fotocamera
+    # Apply the rotation: transform into the camera's coordinate system
+    camera_coordinates = R @ translated_coordinates
 
-    # Applicazione della rotazione
-    camera_coordinates = R @ translated_coordinates  # Trasformazione al sistema di coordinate della fotocamera
+    # Extract x, y, z coordinates in the camera's coordinate system
+    dx = camera_coordinates[0, :]  # x coordinates in the camera's coordinate system
+    dy = camera_coordinates[1, :]  # y coordinates in the camera's coordinate system
+    dz = camera_coordinates[2, :]  # z coordinates in the camera's coordinate system
 
-    # Estrazione delle coordinate x, y, z nel sistema della fotocamera
-    dx = camera_coordinates[0, :]  # Coordinate x nel sistema fotocamera
-    dy = camera_coordinates[1, :]  # Coordinate y nel sistema fotocamera
-    dz = camera_coordinates[2, :]  # Coordinate z nel sistema fotocamera
-
-    # Calcolo della lunghezza focale in pixel
+    # Compute the focal length in pixels
     f_x = f / s_w * U
     f_y = f / s_h * V
 
-    # Calcolare le coordinate in pixel (u, v)
-    u = U / 2 + f_x * dx / dy  # Proiezione in x
-    v = V / 2 - (f_x * dz / dy)  # Proiezione in y
+    # Projection: calculate the pixel coordinates (u, v)
+    u = U / 2 + f_x * dx / dy
+    v = V / 2 - (f_x * dz / dy)
 
+    # Round the coordinates to integers
     for i in range(len(u)):
         u[i], v[i] = int(u[i]), int(v[i])
 
-    #GESTIONE ERRORI
+    # Error handling: check if the projected coordinates are within the image resolution
     if np.any(u < 0) or np.any(u > U) or np.any(v < 0) or np.any(v > V):
-        raise ValueError(f"Le coordinate in pixel (u, v) sono fuori dalla risoluzione dell'immagine: u={u}, v={v}")
+        raise ValueError(f"Pixel coordinates (u, v) are out of image resolution: u={u}, v={v}")
 
     return u, v
 
