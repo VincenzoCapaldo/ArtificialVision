@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 import torchvision.models as models
 from ultralytics.nn.modules import CBAM
@@ -33,6 +32,24 @@ class Backbone(nn.Module):
         return self.backbone(x)
 
 
+class SEBlock(nn.Module):
+    def __init__(self, channels, reduction=16):
+        super(SEBlock, self).__init__()
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(channels, channels // reduction, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(channels // reduction, channels, bias=False),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        y = self.avgpool(x).view(b, c)
+        y = self.fc(y).view(b, c, 1, 1)
+        return x * y  # Modula i canali
+
+
 class ClassificationHead(nn.Module):
     def __init__(self, num_classes=1, input_features=2048, attention=True):
         super(ClassificationHead, self).__init__()
@@ -43,20 +60,21 @@ class ClassificationHead(nn.Module):
 
         if self.attention:
             self.attention = CBAM(self.input_features)
+            self.se_block = SEBlock(self.input_features)  # Aggiungi SE Block
 
         self.avgpool = nn.AdaptiveAvgPool2d(1)
 
-        self.fc1 = nn.Linear(self.input_features, 512)  # Aumentato
+        self.fc1 = nn.Linear(self.input_features, 512)
         self.bn1 = nn.BatchNorm1d(512)
-        self.fc2 = nn.Linear(512, 256)  # Layer intermedio
-        self.fc3 = nn.Linear(256, 128)  # Layer aggiuntivo
-        self.fc4 = nn.Linear(128, num_classes)
+        self.fc2 = nn.Linear(512, 256)
+        self.fc3 = nn.Linear(256, num_classes)
 
         self.dropout = nn.Dropout(p=0.5)
 
     def forward(self, x):
         if self.attention:
             x = self.attention(x)
+            x = self.se_block(x)  # SE Block dopo CBAM
 
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
@@ -65,12 +83,9 @@ class ClassificationHead(nn.Module):
         x = self.dropout(x)
         x = F.relu(self.fc2(x))
         x = self.dropout(x)
-        x = F.relu(self.fc3(x))
-        x = self.dropout(x)
-        x = self.fc4(x)
+        x = self.fc3(x)
 
         return x
-
 
 
 class PARMultiTaskNet(nn.Module):
