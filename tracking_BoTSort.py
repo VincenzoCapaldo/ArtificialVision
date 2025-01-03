@@ -220,11 +220,11 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
     # Scrittura dei risultati su file
     for id in lista_persone:
         output_writer.add_person(id)
-        gender = 1 if (probability_sum_gender[id] / denominator_gender[id]) > 0.5 else 0
+        gender = 1 if (probability_sum_gender.get(id) / denominator_gender.get(id)) > 0.5 else 0
         output_writer.set_gender(id, gender)
-        bag = 1 if (probability_sum_bag[id] / denominator_bag[id]) > 0.5 else 0
+        bag = 1 if (probability_sum_bag.get(id) / denominator_bag.get(id)) > 0.5 else 0
         output_writer.set_bag(id, bag)
-        hat = 1 if (probability_sum_hat[id] / denominator_hat[id]) > 0.5 else 0
+        hat = 1 if (probability_sum_hat.get(id) / denominator_hat.get(id)) > 0.5 else 0
         output_writer.set_hat(id, hat)
 
     # Add trajectory for all the people
