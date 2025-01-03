@@ -59,7 +59,15 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
 
     lista_attraversamenti = {}  # Stores the lines traversed by each ID
     lista_persone = []
+    current_pedestrian_attributes = {}
     pedestrian_attributes = {}
+
+    probability_sum_gender = defaultdict(float)
+    denominator_gender = defaultdict(float)
+    probability_sum_bag = defaultdict(float)
+    denominator_bag = defaultdict(float)
+    probability_sum_hat = defaultdict(float)
+    denominator_hat = defaultdict(float)
 
     # Loop through the video frames
     while cap.isOpened():
@@ -123,50 +131,42 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                         lista_attraversamenti[track_id] = []
                     lista_attraversamenti[track_id].extend(crossed_line_id)
 
-                if (frame_count % fps == 0): # ogni secondo
-                    # Inferenza
-                    screen = gui.screen(frame, top_left_corner, bottom_right_corner)
-                    image = transforms(Image.fromarray(screen).convert('RGB')).to(device)
-                    image = image.unsqueeze(0)  # Aggiunge una dimensione batch
-                    start = time.time()
-                    outputs = classification(image)
-                    end = time.time()
-                    print(f"\n\nInferenza: {end-start}\n\n")
-                    prediction = {}
-                    probability = {}
-                    for task in ["gender", "bag", "hat"]:
-                        probability[task] = torch.sigmoid(outputs[task]).item()
-                        prediction[task] = 1 if probability[task] > 0.5 else 0
+                # Inferenza
+                screen = gui.screen(frame, top_left_corner, bottom_right_corner)
+                image = transforms(Image.fromarray(screen).convert('RGB')).to(device)
+                image = image.unsqueeze(0)  # Aggiunge una dimensione batch
+                outputs = classification(image)
 
-                    # Aggiorna il dizionario degli attributi
-                    pedestrian_attributes[(track_id, frame_count)] = {
-                        "prob_gender": probability["gender"],
-                        "prob_bag": probability["bag"],
-                        "prob_hat": probability["hat"],
-                        "gender": prediction["gender"],
-                        "bag": prediction["bag"],
-                        "hat": prediction["hat"]
-                    }
+                prediction = {}
+                probability = {}
+                for task in ["gender", "bag", "hat"]:
+                    probability[task] = torch.sigmoid(outputs[task]).item()
+                    prediction[task] = 1 if probability[task] > 0.5 else 0
 
-                # Se track_id non è presente, viene creato un nuovo dizionario con i seguenti valori predefiniti
-                attributes = pedestrian_attributes.get((track_id, (frame_count - (frame_count % fps))), {
-                    "gender": False,
-                    "bag": False,
-                    "hat": False
-                })
+                # Calcolo della media ponderata
+                probability_sum_gender[track_id] += probability["gender"] * prediction["gender"]
+                denominator_gender[track_id] += probability["gender"]
+                probability_sum_bag[track_id] += probability["bag"] * prediction["bag"]
+                denominator_bag[track_id] += probability["bag"]
+                probability_sum_hat[track_id] += probability["hat"] * prediction["hat"]
+                denominator_hat[track_id] += probability["hat"]
+
+                gender = 1 if (probability_sum_gender[track_id] / denominator_gender[track_id]) > 0.5 else 0
+                bag = 1 if (probability_sum_bag[track_id] / denominator_bag[track_id]) > 0.5 else 0
+                hat = 1 if (probability_sum_hat[track_id] / denominator_hat[track_id]) > 0.5 else 0
 
                 # Costruisci la lista di attributi da mostrare
-                if attributes["gender"]:
+                if gender:
                     pedestrian_attribute = [f"Gender: F"]
                 else:
                     pedestrian_attribute = [f"Gender: M"]
-                if not attributes["bag"] and not attributes["hat"]:
+                if not bag and not hat:
                     pedestrian_attribute.append("No Bag No Hat")
-                if attributes["bag"] and not attributes["hat"]:
+                if bag and not hat:
                     pedestrian_attribute.append("Bag")
-                if not attributes["bag"] and attributes["hat"]:
+                if not bag and hat:
                     pedestrian_attribute.append("Hat")
-                if attributes["bag"] and attributes["hat"]:
+                if bag and hat:
                     pedestrian_attribute.append("Bag Hat")
 
                 pedestrian_attribute.append(f"[{', '.join(map(str, lista_attraversamenti.get(track_id, [])))}]")
@@ -205,39 +205,20 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                 d2 -= 1
             first_frame = False
 
-    # Calcolo della media ponderata per ogni persona
-    probability_sum_gender = defaultdict(float)
-    denominator_gender = defaultdict(float)
-    probability_sum_bag = defaultdict(float)
-    denominator_bag = defaultdict(float)
-    probability_sum_hat = defaultdict(float)
-    denominator_hat = defaultdict(float)
-
-    for (id, frame), attributes in pedestrian_attributes.items():
-        probability_sum_gender[id] += attributes["prob_gender"] * attributes["gender"]
-        denominator_gender[id] += attributes["prob_gender"]
-        probability_sum_bag[id] += attributes["prob_bag"] * attributes["bag"]
-        denominator_bag[id] += attributes["prob_bag"]
-        probability_sum_hat[id] += attributes["prob_hat"] * attributes["hat"]
-        denominator_hat[id] += attributes["prob_hat"]
-
-    # Scrittura dei risultati su file
-    for id in lista_persone:
-        output_writer.add_person(id)
-        gender = 1 if (probability_sum_gender.get(id) / denominator_gender.get(id)) > 0.5 else 0
-        output_writer.set_gender(id, gender)
-        bag = 1 if (probability_sum_bag.get(id) / denominator_bag.get(id)) > 0.5 else 0
-        output_writer.set_bag(id, bag)
-        hat = 1 if (probability_sum_hat.get(id) / denominator_hat.get(id)) > 0.5 else 0
-        output_writer.set_hat(id, hat)
-
-    # Add trajectory for all the people
-    for id in lista_attraversamenti:
-        trajectory = lista_attraversamenti[id]
-        output_writer.set_trajectory(id, trajectory)
+    # # Scrittura dei risultati su file
+    # for id in lista_persone:
+    #     output_writer.add_person(id)
+    #     output_writer.set_gender(id, gender)
+    #     output_writer.set_bag(id, bag)
+    #     output_writer.set_hat(id, hat)
+    #
+    # # Add trajectory for all the people
+    # for id in lista_attraversamenti:
+    #     trajectory = lista_attraversamenti[id]
+    #     output_writer.set_trajectory(id, trajectory)
 
     # Print people info on "./output/output.json" file
-    output_writer.write_output()
+    #output_writer.write_output()
 
     # Release the video capture object and close the display window
     cap.release()
