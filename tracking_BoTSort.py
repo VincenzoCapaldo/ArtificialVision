@@ -46,7 +46,7 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
 
     # Caricamento del modello per la classificazione
     classification = PARMultiTaskNet(backbone='resnet50', pretrained=False, attention=True).to(device)
-    checkpoint_path = './models/resnet50.pth'
+    checkpoint_path = './models/resnet50_finale_andrea.pth'
     checkpoint = torch.load(checkpoint_path, map_location=device)
     classification.load_state_dict(checkpoint['model_state'])
     classification.eval()
@@ -135,8 +135,8 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                     prediction = {}
                     probability = {}
                     for task in ["gender", "bag", "hat"]:
-                        probability[task] = torch.sigmoid(outputs[task])
-                        prediction[task] = (probability[task] > 0.5).int().cpu().numpy()
+                        probability[task] = torch.sigmoid(outputs[task]).item()
+                        prediction[task] = 1 if probability[task] > 0.5 else 0
 
                     # Aggiorna il dizionario degli attributi
                     pedestrian_attributes[(track_id, frame_count)] = {
@@ -209,9 +209,6 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
     probability_sum_hat = []
     denominator_hat = []'''
 
-
-
-    # Inizializza i dizionari
     probability_sum_gender = defaultdict(float)
     denominator_gender = defaultdict(float)
     probability_sum_bag = defaultdict(float)
@@ -220,15 +217,32 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
     denominator_hat = defaultdict(float)
 
     for (id, frame), attributes in pedestrian_attributes.items():
-        probability_sum_gender[id] += attributes["prob_gender"].item() * attributes["gender"]
-        denominator_gender[id] += attributes["prob_gender"].item()
-        probability_sum_bag[id] += attributes["prob_bag"].item() * attributes["bag"]
-        denominator_bag[id] += attributes["prob_bag"].item()
-        probability_sum_hat[id] += attributes["prob_hat"].item() * attributes["hat"]
-        denominator_hat[id] += attributes["prob_hat"].item()
+        probability_sum_gender[id] += attributes["prob_gender"] * attributes["gender"]
+        denominator_gender[id] += attributes["prob_gender"]
+        probability_sum_bag[id] += attributes["prob_bag"] * attributes["bag"]
+        denominator_bag[id] += attributes["prob_bag"]
+        probability_sum_hat[id] += attributes["prob_hat"] * attributes["hat"]
+        denominator_hat[id] += attributes["prob_hat"]
 
+    # Stampa dei dizionari
+    for key, value in probability_sum_gender.items():
+        print(f"{key}: {value}")
 
-    print(pedestrian_attributes)
+    for key, value in denominator_gender.items():
+        print(f"{key}: {value}")
+
+    for key, value in probability_sum_bag.items():
+        print(f"{key}: {value}")
+
+    for key, value in denominator_bag.items():
+        print(f"{key}: {value}")
+
+    for key, value in probability_sum_hat.items():
+        print(f"{key}: {value}")
+
+    for key, value in denominator_hat.items():
+        print(f"{key}: {value}")
+
     # Scrittura dei risultati su file
     for id in lista_persone:
         output_writer.add_person(id)
