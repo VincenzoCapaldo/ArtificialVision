@@ -143,13 +143,13 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                     probability[task] = torch.sigmoid(outputs[task]).item()
                     prediction[task] = 1 if probability[task] > 0.5 else 0
 
-                # Calcolo della media ponderata
-                probability_sum_gender[track_id] += probability["gender"] * prediction["gender"]
-                denominator_gender[track_id] += probability["gender"]
-                probability_sum_bag[track_id] += probability["bag"] * prediction["bag"]
-                denominator_bag[track_id] += probability["bag"]
-                probability_sum_hat[track_id] += probability["hat"] * prediction["hat"]
-                denominator_hat[track_id] += probability["hat"]
+                # Calcolo della media aritmetica
+                probability_sum_gender[track_id] += probability["gender"]
+                denominator_gender[track_id] += 1
+                probability_sum_bag[track_id] += probability["bag"]
+                denominator_bag[track_id] += 1
+                probability_sum_hat[track_id] += probability["hat"]
+                denominator_hat[track_id] += 1
 
                 gender = 1 if (probability_sum_gender[track_id] / denominator_gender[track_id]) > 0.5 else 0
                 bag = 1 if (probability_sum_bag[track_id] / denominator_bag[track_id]) > 0.5 else 0
