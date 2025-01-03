@@ -53,7 +53,6 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
 
     transforms = T.Compose([
         T.Resize((224, 224)),
-        T.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1),
         T.ToTensor(),
         T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
@@ -221,7 +220,6 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
         denominator_bag[id] += attributes["prob_bag"]
         probability_sum_hat[id] += attributes["prob_hat"] * attributes["hat"]
         denominator_hat[id] += attributes["prob_hat"]
-
 
     # Scrittura dei risultati su file
     for id in lista_persone:
