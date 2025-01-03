@@ -10,6 +10,7 @@ import time
 import gui_utils as gui
 import torch
 import torchvision.transforms as T
+from collections import defaultdict
 
 def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio.mp4", show=False, real_time=True, tracker="confs/botsort.yaml"):
 
@@ -44,14 +45,15 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
     frame_count = 0
 
     # Caricamento del modello per la classificazione
-    classification = PARMultiTaskNet(backbone='resnet50', pretrained=False).to(device)
-    checkpoint_path = './models/resnet50 (modello GOAT senza crop).pth'
+    classification = PARMultiTaskNet(backbone='resnet50', pretrained=False, attention=True).to(device)
+    checkpoint_path = './models/resnet50_finale_andrea.pth'
     checkpoint = torch.load(checkpoint_path, map_location=device)
     classification.load_state_dict(checkpoint['model_state'])
     classification.eval()
 
     transforms = T.Compose([
         T.Resize((224, 224)),
+        T.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1),
         T.ToTensor(),
         T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
@@ -127,13 +129,15 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                     screen = gui.screen(frame, top_left_corner, bottom_right_corner)
                     image = transforms(Image.fromarray(screen).convert('RGB')).to(device)
                     image = image.unsqueeze(0)  # Aggiunge una dimensione batch
+                    start = time.time()
                     outputs = classification(image)
-
+                    end = time.time()
+                    print(f"\n\nInferenza: {end-start}\n\n")
                     prediction = {}
                     probability = {}
                     for task in ["gender", "bag", "hat"]:
-                        probability[task] = torch.sigmoid(outputs[task])
-                        prediction[task] = (probability[task] > 0.5).int().cpu().numpy()
+                        probability[task] = torch.sigmoid(outputs[task]).item()
+                        prediction[task] = 1 if probability[task] > 0.5 else 0
 
                     # Aggiorna il dizionario degli attributi
                     pedestrian_attributes[(track_id, frame_count)] = {
@@ -146,7 +150,7 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                     }
 
                 # Se track_id non è presente, viene creato un nuovo dizionario con i seguenti valori predefiniti
-                attributes = pedestrian_attributes.get(track_id, {
+                attributes = pedestrian_attributes.get((track_id, (frame_count - (frame_count % fps))), {
                     "gender": False,
                     "bag": False,
                     "hat": False
@@ -178,10 +182,6 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
             frame_count += 1
             # Display the annotated frame
             if show:
-                # Crea una finestra ridimensionabile
-                cv2.namedWindow("YOLO Tracking", cv2.WINDOW_NORMAL)
-                # Imposta la finestra a schermo intero
-                cv2.setWindowProperty("YOLO Tracking", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
                 cv2.imshow("YOLO Tracking", annotated_frame)
 
             # Break the loop if 'q' is pressed
@@ -202,20 +202,22 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                 d2 -= 1
             first_frame = False
 
-    # Calcolo della media ponderataper ogni persona
-    probability_sum_gender = []
-    denominator_gender = []
-    probability_sum_bag = []
-    denominator_bag = []
-    probability_sum_hat = []
-    denominator_hat = []
+    # Calcolo della media ponderata per ogni persona
+    probability_sum_gender = defaultdict(float)
+    denominator_gender = defaultdict(float)
+    probability_sum_bag = defaultdict(float)
+    denominator_bag = defaultdict(float)
+    probability_sum_hat = defaultdict(float)
+    denominator_hat = defaultdict(float)
+
     for (id, frame), attributes in pedestrian_attributes.items():
-        probability_sum_gender[id] += round(attributes["prob_gender"].item(), 2) * attributes["gender"]
-        denominator_gender[id] += round(attributes["prob_gender"].item(), 2)
-        probability_sum_bag[id] += round(attributes["prob_bag"].item(), 2) * attributes["bag"]
-        denominator_bag[id] += round(attributes["prob_bag"].item(), 2)
-        probability_sum_hat[id] += round(attributes["prob_hat"].item(), 2) * attributes["hat"]
-        denominator_hat[id] += round(attributes["prob_hat"].item(), 2)
+        probability_sum_gender[id] += attributes["prob_gender"] * attributes["gender"]
+        denominator_gender[id] += attributes["prob_gender"]
+        probability_sum_bag[id] += attributes["prob_bag"] * attributes["bag"]
+        denominator_bag[id] += attributes["prob_bag"]
+        probability_sum_hat[id] += attributes["prob_hat"] * attributes["hat"]
+        denominator_hat[id] += attributes["prob_hat"]
+
 
     # Scrittura dei risultati su file
     for id in lista_persone:
