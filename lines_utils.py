@@ -5,7 +5,7 @@ import cv2
 from gui_utils import draw_lines_on_frame
 
 
-def mapping_3D_2D(x_real, y_real, config_file="confs/camera_config.txt"):
+def mapping_3D_2D(x_real, y_real, config_file="confs/config.txt"):
     """
     Converts real-world coordinates to pixel coordinates on the image plane.
     This function applies a series of transformations (including yaw, pitch, and roll)
@@ -18,7 +18,7 @@ def mapping_3D_2D(x_real, y_real, config_file="confs/camera_config.txt"):
     y_real : numpy.ndarray
         Vector containing the real-world y coordinates of the points to be projected
     config_file : str, optional
-        Path to the configuration file containing camera parameters
+        Path to the configuration text file (optional, default is "confs/config.txt")
 
     Returns:
     u : numpy.ndarray
@@ -31,15 +31,15 @@ def mapping_3D_2D(x_real, y_real, config_file="confs/camera_config.txt"):
         config = json.load(f)
 
     # Camera parameters from the configuration file
-    f = config['focal_length']  # Focal length in meters
-    U = config['image_width']  # Image width in pixels
-    V = config['image_height']  # Image height in pixels
-    yaw = config['yaw'] * pi / 180  # Yaw rotation in radians
-    roll = config['roll'] * pi / 180  # Roll rotation in radians
-    pitch = config['pitch'] * pi / 180  # Pitch rotation in radians
-    xc, yc, zc = config['camera_position']  # Camera position in the world coordinate system
-    s_w = config['sensor_width']  # Sensor width
-    s_h = config['sensor_height']  # Sensor height
+    f = config['f']  # Focal length in meters
+    U = config['U']  # Image width in pixels
+    V = config['V']  # Image height in pixels
+    yaw = config['thyaw'] * pi / 180  # Yaw rotation in radians
+    roll = config['throll'] * pi / 180  # Roll rotation in radians
+    pitch = config['thpitch'] * pi / 180  # Pitch rotation in radians
+    xc, yc, zc = config['xc'], config['yc'], config['zc']  # Camera position in the world coordinate system
+    s_w = config['sw']  # Sensor width
+    s_h = config['sh']  # Sensor height
 
     # Transform real-world coordinates into the camera's coordinate system
     real_coordinates = np.vstack((x_real, y_real, np.zeros_like(x_real)))  # Add z=0 for the points
@@ -89,14 +89,14 @@ def mapping_3D_2D(x_real, y_real, config_file="confs/camera_config.txt"):
     return u, v
 
 
-def load_lines(config_file="confs/lines_config.txt"):
+def load_lines(config_file="confs/config.txt"):
     """
     This function loads the lines from a text file formatted in JSON, extracts their real-world coordinates
     and then uses the `mapping_3D_2D` function to obtain pixel coordinates in the image.
 
     Parameters:
-    config_file : str, optional
-        Path to the configuration text file (default is "confs/lines_config.txt")
+    config_file : str
+        Path to the configuration text file (optional, default is "confs/config.txt")
 
     Returns:
     lines_in_pixel : list
@@ -107,7 +107,6 @@ def load_lines(config_file="confs/lines_config.txt"):
         config = json.load(f)  # Assuming the file contains JSON-formatted content
 
     # Lists to store the lines in real-world coordinates and pixel coordinates
-    lines_in_real = []
     lines_in_pixel = []
 
     # Iterate over the lines in the configuration file
