@@ -5,7 +5,7 @@ from PIL import Image
 from ultralytics import YOLO
 from OutputWriter import OutputWriter
 from classification.nets import PARMultiTaskNet
-from lines_utils import get_lines_info, check_crossed_line
+from lines_utils import get_lines_info, check_crossed_lines
 import time
 import gui_utils as gui
 import torch
@@ -124,7 +124,7 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                 cv2.polylines(annotated_frame, [points], isClosed=False, color=(230, 230, 230), thickness=10)
 
                 #checking crossed lines
-                crossed_line_id = check_crossed_line(track, lines_info)
+                crossed_line_id = check_crossed_lines(track, lines_info)
                 if (len(crossed_line_id) != 0):
                     if not (track_id in lista_attraversamenti):
                         lista_attraversamenti[track_id] = []
