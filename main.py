@@ -22,7 +22,7 @@ def main():
     show = True
 
     # Start the tracking process
-    start_track(device, video_path=video_path, show=show, real_time=True)
+    start_track(device, video_path=video_path, show=show)
 
 
 if __name__ == "__main__":

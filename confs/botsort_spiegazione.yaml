@@ -2,17 +2,17 @@
 # Default YOLO tracker settings for BoT-SORT tracker https://github.com/NirAharon/BoT-SORT
 
 tracker_type: botsort # tracker type, ['botsort', 'bytetrack']
-track_high_thresh: 0.25 # threshold for the first association # valore di quanto sei sicuro di un oggetto nella prima associazione
-track_low_thresh: 0.1 # threshold for the second association # valore di quanto sei sicuro di un oggetto nella seconda associazione
-new_track_thresh: 0.25 # threshold for init new track if the detection does not match any tracks # valori BASSI fanno cambiare sempre id, valori ALTI cambia poco l ID
-track_buffer: 30 # buffer to calculate the time when to remove tracks # Numero di frame per i quali le informazioni di un tracciamento sono mantenute prima di considerare l'oggetto "perso"
-match_thresh: 0.1 # threshold for matching tracks # è il valore minimo che la similarità calcolata deve superare per considerare che una traccia esistente e un nuovo rilevamento appartengano allo stesso oggetto
+track_high_thresh: 0.40 # threshold for the first association
+track_low_thresh: 0.05 # threshold for the second association
+new_track_thresh: 0.8 # threshold for init new track if the detection does not match any tracks
+track_buffer: 60 # buffer to calculate the time when to remove tracks
+match_thresh: 0.85 # threshold for matching tracks
 fuse_score: True # Whether to fuse confidence scores with the iou distances before matching
 # min_box_area: 10  # threshold for min box areas(for tracker evaluation, not used for now)
 
 # BoT-SORT settings
 gmc_method: None
 # ReID model related thresh (not supported yet)
-proximity_thresh: 0.5 # Soglia di prossimità per decidere se due oggetti sono abbastanza vicini da essere considerati lo stesso
-appearance_thresh: 0.25 #  soglia che definisce il livello minimo di similarità visiva richiesto per associare un rilevamento a una traccia esistente basandosi sulle caratteristiche di aspetto (appearance) degli oggetti
-with_reid: False # Booleano che specifica se integrare o meno il ReID
+proximity_thresh: 0.5
+appearance_thresh: 0.25
+with_reid: True

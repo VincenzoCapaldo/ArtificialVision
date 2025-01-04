@@ -1,3 +1,4 @@
+from collections import defaultdict
 import cv2
 import numpy as np
 from PIL import Image
@@ -12,7 +13,7 @@ import torchvision.transforms as T
 from collections import defaultdict
 
 
-def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio.mp4", show=False, real_time=True,
+def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio.mp4", show=False,
                 tracker="confs/botsort.yaml"):
     """
     Main function to perform people tracking in a video using a pre-trained YOLO model.
@@ -39,14 +40,16 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
     cap = cv2.VideoCapture(video_path)
     fps = int(cap.get(cv2.CAP_PROP_FPS) + 1)
 
+    # CONSTANTS
+    PROCESSING_FRAME_RATE = 8
+    FRAME_TO_SKIP = int(fps/PROCESSING_FRAME_RATE)
+    INFERENCE_RATE = PROCESSING_FRAME_RATE * 2  # one inference every 2 seconds
     # Store the track history (for each ID, its trajectory)
     track_history = defaultdict(lambda: [])
-    first_frame = True
-    frame_count = 0
 
     # Caricamento del modello per la classificazione
     classification = PARMultiTaskNet(backbone='resnet50', pretrained=False, attention=True).to(device)
-    checkpoint_path = './models/resnet50_finale_andrea.pth'
+    checkpoint_path = './models/resnet50.pth'
     checkpoint = torch.load(checkpoint_path, map_location=device)
     classification.load_state_dict(checkpoint['model_state'])
     classification.eval()
@@ -67,13 +70,20 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
     probability_sum_hat = defaultdict(float)
     denominator_hat = defaultdict(float)
 
+    #frame_count = 0
     # Loop through the video frames
     while cap.isOpened():
         # Read a frame from the video
-        # check the time for read one frame
-        start_read_time = time.time()
+
         success, frame = cap.read()
-        start_time = end_read_time = time.time()
+        # frame_count += FRAME_TO_SKIP
+        # cap.set(cv2.CAP_PROP_POS_FRAMES, frame_count)
+
+        # Dovrebbe essere più efficiente della set
+        for _ in range(FRAME_TO_SKIP - 1):
+            cap.grab()  # Grab frames without decoding them
+
+        # check the time for read one frame
         if success:
             # Run YOLO11 tracking on the frame, persisting tracks between frames
             results = model.track(frame, persist=True, tracker=tracker, classes=[0])
@@ -87,6 +97,11 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
 
             # Plot the tracks
             for box, track_id in zip(boxes, track_ids):
+
+                # Add a new person (se non è già presente)
+                if track_id not in lista_persone:
+                    lista_persone.append(track_id)
+
                 x, y, w, h = box
                 x1, y1, x2, y2 = int(x - w / 2), int(y - h / 2), int(x + w / 2), int(y + h / 2)
                 top_left_corner = (x1, y1)
@@ -113,16 +128,16 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                 # FINE DISEGNI, INIZIO DISEGNI TRACCE
                 # Gestione delle traiettorie e disegno delle linee di tracciamento
                 track = track_history[track_id]
-                trajectory_point = 30  # Maintain up to 30 tracking points
+                trajectory_point = 5  # Maintain up to 30 tracking points
                 track.append((float(x), float(y + h / 2)))  # x, y center point ''' (lower center of the bounding box) '''
-                if len(track) > trajectory_point:  # retain 90 tracks for 90 frames
+                if len(track) > trajectory_point:  # retain 5 tracks
                     track.pop(0)
 
                 # Draw the tracking lines
-                points = np.hstack(track).astype(np.int32).reshape((-1, 1, 2))
-                cv2.polylines(annotated_frame, [points], isClosed=False, color=(230, 230, 230), thickness=10)
+                # points = np.hstack(track).astype(np.int32).reshape((-1, 1, 2))
+                # cv2.polylines(annotated_frame, [points], isClosed=False, color=(230, 230, 230), thickness=10)
 
-                #checking crossed lines
+                # checking crossed lines
                 crossed_line_ids = check_crossed_lines(track, lines_info)
                 if (len(crossed_line_ids) != 0):
                     if not (track_id in lista_attraversamenti):
@@ -172,11 +187,6 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                 # Disegna gli attributi sotto il bounding box
                 gui.add_info_scene(annotated_frame, pedestrian_attribute, bottom_left_corner, 0.5, 2)
 
-                # Add a new person (se non è già presente)
-                if track_id not in lista_persone:
-                    lista_persone.append(track_id)
-
-            frame_count += 1
             # Display the annotated frame
             if show:
                 # Crea una finestra ridimensionabile
@@ -191,17 +201,6 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
         else:
             # Break the loop if the end of the video is reached
             break
-        # Real-time synchronization management
-        end_time = time.time()
-        if real_time:
-            ms_per_frame = 1 / fps
-            elapsed_time = end_time - start_time
-            discard_frames = int(elapsed_time / ms_per_frame) + 1
-            d2 = int(discard_frames + ((discard_frames * (end_read_time - start_read_time)) / ms_per_frame)) + 1
-            while d2 > 0 and not first_frame:
-                cap.read()
-                d2 -= 1
-            first_frame = False
 
     # Release the video capture object and close the display window
     cap.release()
