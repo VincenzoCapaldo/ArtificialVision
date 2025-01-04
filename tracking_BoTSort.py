@@ -10,8 +10,7 @@ import torchvision.transforms as T
 from collections import defaultdict
 
 
-def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio.mp4", show=False,
-                tracker="confs/botsort.yaml"):
+def start_track(device, model_path="models/yolo11m.pt", video_path="videos/video.mp4", show=False, tracker="confs/botsort.yaml"):
     """
     Main function to perform people tracking in a video using a pre-trained YOLO model.
 
@@ -27,24 +26,6 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
     # Load the YOLO model
     model = YOLO(model_path).to(device)
 
-    # Load lines info
-    lines_info = get_lines_info()
-
-    # Create a result-writer object to write on a json file the results
-    output_writer = OutputWriter()
-
-    # Open the video file
-    cap = cv2.VideoCapture(video_path)
-    fps = int(cap.get(cv2.CAP_PROP_FPS) + 1)
-
-    # CONSTANTS
-    PROCESSING_FRAME_RATE = 8  # Frame to process in 1 second
-    FRAME_TO_SKIP = int(fps / PROCESSING_FRAME_RATE)
-    INFERENCE_RATE = FRAME_TO_SKIP * 2
-
-    # Store the track history (for each ID, its trajectory)
-    track_history = defaultdict(lambda: [])
-
     # Caricamento del modello per la classificazione
     classification = PARMultiTaskNet(backbone='resnet50', pretrained=False, attention=True).to(device)
     checkpoint_path = './models/classification_model.pth'
@@ -58,9 +39,6 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
         T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
 
-    lista_attraversamenti = {}  # Stores the lines traversed by each ID
-    lista_persone = []
-
     probability_sum_gender = defaultdict(float)
     denominator_gender = defaultdict(float)
     probability_sum_bag = defaultdict(float)
@@ -68,30 +46,46 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
     probability_sum_hat = defaultdict(float)
     denominator_hat = defaultdict(float)
     pedestrian_attribute = []
+
+    # Load lines info
+    lines_info = get_lines_info()
+
+    # Open the video file
+    cap = cv2.VideoCapture(video_path)
+    fps = int(cap.get(cv2.CAP_PROP_FPS) + 1) # calcola gli fps del video
+
+    # CONSTANTS
+    PROCESSING_FRAME_RATE = 8  # Frame to process in 1 second
+    FRAME_TO_SKIP = int(fps / PROCESSING_FRAME_RATE)
+    INFERENCE_RATE = FRAME_TO_SKIP * 2
     frame_count = 0
+
+    # Store the track history (for each ID, its trajectory)
+    track_history = defaultdict(lambda: [])
+
+    lista_attraversamenti = {}  # Stores the lines traversed by each ID
+    lista_persone = []
+
     # Loop through the video frames
     while cap.isOpened():
+
         # Read a frame from the video
-
         success, frame = cap.read()
-        # frame_count += FRAME_TO_SKIP
-        # cap.set(cv2.CAP_PROP_POS_FRAMES, frame_count)
 
-        # Dovrebbe essere più efficiente della set
+        # skippa i frames
         for _ in range(FRAME_TO_SKIP - 1):
             frame_count += FRAME_TO_SKIP
             cap.grab()  # Grab frames without decoding them
 
-        # check the time for read one frame
         if success:
-            # Run YOLO11 tracking on the frame, persisting tracks between frames
+            # Run YOLO tracking on the frame, persisting tracks between frames
             results = model.track(frame, persist=True, tracker=tracker, classes=[0])
             if results[0] is not None and results[0].boxes is not None and results[0].boxes.id is not None:
                 # Get the boxes and track IDs
                 boxes = results[0].boxes.xywh.cpu()
                 track_ids = results[0].boxes.id.int().cpu().tolist()
 
-                # Visualize the results on the frame ( Bounding box rosso e id rosso in alto a sx)
+                # Visualize the results on the frame
                 annotated_frame = frame.copy()
 
                 # Plot the tracks
@@ -102,15 +96,12 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                         lista_persone.append(track_id)
 
                     x, y, w, h = box
-                    x1, y1, x2, y2 = int(x - w / 2), int(y - h / 2), int(x + w / 2), int(y + h / 2)
-                    top_left_corner = (x1, y1)
-                    bottom_right_corner = (x2, y2)
-                    # starting point for display pedestrian attribute
-                    bottom_left_corner = (x1, y2)
+                    top_left_corner = (int(x - w / 2), int(y - h / 2))
+                    bottom_right_corner = (int(x + w / 2), int(y + h / 2))
+                    bottom_left_corner = (int(x - w / 2), int(y + h / 2))
 
                     # general information of the scene to display
-                    text = []
-                    text.append(f"Total People: {len(track_ids)}")
+                    text = [f"Total People: {len(track_ids)}"]
                     for line in lines_info:
                         text.append(f"Passages for line {line['line_id']}: {line['crossing_counting']}")
 
@@ -201,11 +192,13 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
     cv2.destroyAllWindows()
 
     # Scrittura dei risultati su file
+    # Create a result-writer object to write on a json file the results
+    output_writer = OutputWriter()
     for track_id in lista_persone:
         gender = 1 if (probability_sum_gender[track_id] / denominator_gender[track_id]) > 0.5 else 0
         bag = 1 if (probability_sum_bag[track_id] / denominator_bag[track_id]) > 0.5 else 0
         hat = 1 if (probability_sum_hat[track_id] / denominator_hat[track_id]) > 0.5 else 0
-        trajectory = lista_attraversamenti[track_id] if track_id in lista_attraversamenti else None
+        trajectory = lista_attraversamenti[track_id] if track_id in lista_attraversamenti else []
         output_writer.add_person(track_id, gender, bag, hat, trajectory)
 
     output_writer.write_output()

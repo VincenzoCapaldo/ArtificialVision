@@ -1,60 +1,71 @@
 import json
 
 
-# The purpose of this class is to generate a json file containing, for each person (identified with an ID),
-# information regarding gender, whether they are wearing a hat, whether they are wearing a bag and the trajectory.
 class OutputWriter:
+    """
+    This class is responsible for storing and writing information about people to a txt file.
+    Each person is identified by a unique ID and their information includes gender, hat, bag
+    and their trajectory (the ordered sequence of lines they have crossed).
+    """
+
     def __init__(self):
-        # Initialize a list to store the information about people
-        self.people = []
+        """
+        Initializes the OutputWriter by creating an empty list to store the information of people.
+        """
+        self.people = []  # List to store the people data
 
     def add_person(self, person_id, gender, bag, hat, trajectory):
         """
-        Add a new person if the person_id is not already present and their related information
+        Adds a new person to the people list.
 
-        :param person_id: int, person ID
-        :param gender: str, "male" or "female"
-        :param hat: bool, indicates whether the person is wearing a hat or not
-        :param bag: bool, indicates whether the person is wearing a bag or not
-        :param trajectory: list, a list of virtual line IDs, namely the ordered sequence of lines crossed by the person
+        Parameters:
+        person_id : int
+            Unique identifier for the person
+        gender : int
+            Gender of the person, where 0 represents male and 1 represents female
+        bag : int
+            Whether the person is carrying a bag
+        hat : int
+            Whether the person is wearing a hat
+        trajectory : lis
+            List of virtual line IDs representing the ordered sequence of lines crossed by the person
         """
+        # Check if the person already exists in the list by their ID
         for person in self.people:
             if person["id"] == person_id:
                 print(f"Person with ID {person_id} already exists.")
                 return
 
-        if gender == 0:
-            gender = "male"
-        else:
-            gender = "female"
+        # Convert gender from integer (0 or 1) to string ("male" or "female")
+        gender = "male" if gender == 0 else "female"
 
-        if bag == 0:
-            bag = False
-        else:
-            bag = True
+        # Convert bag and hat to boolean values
+        bag = bool(bag)
+        hat = bool(hat)
 
-        if hat == 0:
-            hat = False
-        else:
-            hat = True
-
-        trajectory = map(str, trajectory) if trajectory is not None else '[]'
-
+        # Create a dictionary for the new person with their details
         person = {
-            "id": person_id,
-            "gender": gender,
-            "hat": hat,
-            "bag": bag,
-            "trajectory": trajectory
+            "id": person_id,  # Person's ID
+            "gender": gender,  # Person's gender
+            "hat": hat,  # Whether the person is wearing a hat
+            "bag": bag,  # Whether the person is carrying a bag
+            "trajectory": trajectory  # List of lines crossed by the person
         }
+
+        # Append the new person to the people list
         self.people.append(person)
 
     def write_output(self, filename="./result/result.txt"):
         """
-        Write the stored information in a JSON file.
+        Writes the information about all people stored in the list to a file.
 
-        :param filename: str, name of the result file
+        Parameters:
+        filename : str
+            The path and name of the output file (default is "./result/result.txt").
         """
+        # Create the output dictionary with the list of people
         output = {"people": self.people}
-        with open(filename, 'w') as file:
+
+        # Open the file in write mode and write the data to it in JSON format with indentation
+        with open(filename, 'w+') as file:
             json.dump(output, file, indent=4)

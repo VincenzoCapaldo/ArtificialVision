@@ -1,0 +1,32 @@
+{
+    "people": [
+        {
+            "id": 1,
+            "gender": "female",
+            "hat": false,
+            "bag": true,
+            "trajectory": []
+        },
+        {
+            "id": 2,
+            "gender": "male",
+            "hat": false,
+            "bag": true,
+            "trajectory": []
+        },
+        {
+            "id": 3,
+            "gender": "female",
+            "hat": true,
+            "bag": true,
+            "trajectory": []
+        },
+        {
+            "id": 4,
+            "gender": "male",
+            "hat": false,
+            "bag": false,
+            "trajectory": []
+        }
+    ]
+}
