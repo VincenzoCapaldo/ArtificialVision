@@ -1,4 +1,3 @@
-from collections import defaultdict
 import cv2
 import numpy as np
 from PIL import Image
@@ -204,21 +203,23 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                 d2 -= 1
             first_frame = False
 
-    # # Scrittura dei risultati su file
-    # for id in lista_persone:
-    #     output_writer.add_person(id)
-    #     output_writer.set_gender(id, gender)
-    #     output_writer.set_bag(id, bag)
-    #     output_writer.set_hat(id, hat)
-    #
-    # # Add trajectory for all the people
-    # for id in lista_attraversamenti:
-    #     trajectory = lista_attraversamenti[id]
-    #     output_writer.set_trajectory(id, trajectory)
-
-    # Print people info on "./result/result" file
-    #output_writer.write_output()
-
     # Release the video capture object and close the display window
     cap.release()
     cv2.destroyAllWindows()
+
+    # Scrittura dei risultati su file
+    for track_id in lista_persone:
+        gender = 1 if (probability_sum_gender[track_id] / denominator_gender[track_id]) > 0.5 else 0
+        bag = 1 if (probability_sum_bag[track_id] / denominator_bag[track_id]) > 0.5 else 0
+        hat = 1 if (probability_sum_hat[track_id] / denominator_hat[track_id]) > 0.5 else 0
+        output_writer.add_person(track_id)
+        output_writer.set_gender(track_id, gender)
+        output_writer.set_bag(track_id, bag)
+        output_writer.set_hat(track_id, hat)
+
+    # Add trajectory for all the people
+    for track_id in lista_attraversamenti:
+        trajectory = lista_attraversamenti[track_id]
+        output_writer.set_trajectory(track_id, trajectory)
+
+    output_writer.write_output()

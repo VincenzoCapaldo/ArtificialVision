@@ -78,7 +78,7 @@ class OutputWriter:
                 return
         raise ValueError(f"Person with ID {person_id} not found.")
 
-    def write_output(self, filename="./result/result"):
+    def write_output(self, filename="./result/result.txt"):
         """
         Write the stored information in a JSON file.
 
