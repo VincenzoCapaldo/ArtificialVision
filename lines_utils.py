@@ -4,41 +4,35 @@ import json
 import cv2
 from gui_utils import draw_lines_on_frame
 
-def real_to_pixel(x_real, y_real, config_file="confs/camera_config.json"):
-    """
-    Converts real-world (x, y) coordinates to pixel coordinates on the image plane.
 
+def mapping_3D_2D(x_real, y_real, config_file="confs/camera_config.txt"):
+    """
+    Converts real-world coordinates to pixel coordinates on the image plane.
     This function applies a series of transformations (including yaw, pitch, and roll)
-    to project the real-world (x, y) coordinates in 3D space onto pixel coordinates in the 2D image plane,
-    using camera parameters loaded from a configuration file.
+    to project the real-world coordinates in 3D space onto pixel coordinates in the 2D
+    image plane, using camera parameters loaded from a configuration file.
 
     Parameters:
-    -----------
     x_real : numpy.ndarray
-        Vector containing the real-world x coordinates of the points to be projected.
-
+        Vector containing the real-world x coordinates of the points to be projected
     y_real : numpy.ndarray
-        Vector containing the real-world y coordinates of the points to be projected.
-
+        Vector containing the real-world y coordinates of the points to be projected
     config_file : str, optional
-        Path to the configuration file containing camera parameters.
+        Path to the configuration file containing camera parameters
 
     Returns:
-    --------
     u : numpy.ndarray
-        Vector of x coordinates in pixels on the image plane.
-
+        Vector of x coordinates in pixels on the image plane
     v : numpy.ndarray
-        Vector of y coordinates in pixels on the image plane.
+        Vector of y coordinates in pixels on the image plane
     """
-
     # Load camera parameters from the configuration file
     with open(config_file, 'r') as f:
         config = json.load(f)
 
     # Camera parameters from the configuration file
     f = config['focal_length']  # Focal length in meters
-    U = config['image_width']   # Image width in pixels
+    U = config['image_width']  # Image width in pixels
     V = config['image_height']  # Image height in pixels
     yaw = config['yaw'] * pi / 180  # Yaw rotation in radians
     roll = config['roll'] * pi / 180  # Roll rotation in radians
@@ -48,7 +42,7 @@ def real_to_pixel(x_real, y_real, config_file="confs/camera_config.json"):
     s_h = config['sensor_height']  # Sensor height
 
     # Transform real-world coordinates into the camera's coordinate system
-    real_coordinates = np.vstack((x_real, y_real, np.zeros_like(x_real))) # Add z=0 for the points
+    real_coordinates = np.vstack((x_real, y_real, np.zeros_like(x_real)))  # Add z=0 for the points
     camera_position = np.array([xc, yc, zc]).reshape(3, 1)
     translated_coordinates = real_coordinates - camera_position  # Translation to move the point to the camera's origin
 
@@ -95,156 +89,134 @@ def real_to_pixel(x_real, y_real, config_file="confs/camera_config.json"):
     return u, v
 
 
-def load_lines(config_file="confs/lines_config.json"):
+def load_lines(config_file="confs/lines_config.txt"):
     """
-    Carica le linee da un file di configurazione JSON e converte le coordinate reali in coordinate pixel.
+    This function loads the lines from a text file formatted in JSON, extracts their real-world coordinates
+    and then uses the `mapping_3D_2D` function to obtain pixel coordinates in the image.
 
-    Questa funzione carica le linee da un file JSON, estrae le loro coordinate reali e poi utilizza
-    la funzione `real_to_pixel` per ottenere le coordinate in pixel nell'immagine. Le linee sono
-    restituite come due liste separate: una con le linee in coordinate reali e l'altra con le linee
-    in coordinate pixel.
+    Parameters:
+    config_file : str, optional
+        Path to the configuration text file (default is "confs/lines_config.txt")
 
-    Parametri:
-    -----------
-    config_file : str, opzionale
-        Percorso del file di configurazione JSON che contiene le linee e i parametri della fotocamera (default è "config/lines_config.json").
-
-    Ritorna:
-    --------
-    lines_in_real : list
-        Lista di dizionari contenente le linee con le coordinate reali (x1, y1, x2, y2).
-
+    Returns:
     lines_in_pixel : list
-        Lista di dizionari contenente le linee con le coordinate in pixel (x1, y1, x2, y2).
+        A list of dictionaries containing lines with pixel coordinates (x1, y1, x2, y2)
     """
-    # Carica i parametri dal file di configurazione JSON
+    # Load parameters from the configuration text file
     with open(config_file, 'r') as f:
-        config = json.load(f)
+        config = json.load(f)  # Assuming the file contains JSON-formatted content
 
-    # Liste per memorizzare le linee in coordinate reali e in pixel
+    # Lists to store the lines in real-world coordinates and pixel coordinates
     lines_in_real = []
     lines_in_pixel = []
 
-    # Itera sulle linee nel file di configurazione
+    # Iterate over the lines in the configuration file
     for line in config['lines']:
-        # Estrai le coordinate reali delle linee (x1, y1, x2, y2)
+        # Extract the real-world coordinates of the lines (x1, y1, x2, y2)
         id, x1_real, y1_real, x2_real, y2_real = line['id'], line['x1'], line['y1'], line['x2'], line['y2']
 
-        # Converto le coordinate reali in coordinate in pixel
         try:
-            x_pixel, y_pixel = real_to_pixel(np.array([x1_real, x2_real]), np.array(
-                [y1_real, y2_real]))  # Chiamata alla funzione real_to_pixel per ottenere le coordinate in pixel
+            # Convert the real-world coordinates to pixel coordinates
+            x_pixel, y_pixel = mapping_3D_2D(np.array([x1_real, x2_real]), np.array([y1_real, y2_real]))
 
-            # Salvo le linee in coordinate reali nella lista `lines_in_real` solo se riesco a convertire
-            lines_in_real.append({
-                'id': id,  # ID della linea
-                'x1': x1_real,  # Coordinate x del primo punto
-                'y1': y1_real,  # Coordinate y del primo punto
-                'x2': x2_real,  # Coordinate x del secondo punto
-                'y2': y2_real  # Coordinate y del secondo punto
-            })
-
-            # Salvo le linee in coordinate in pixel nella lista `lines_in_pixel` solo se riesco a convertire
+            # Save the lines with pixel coordinates in the `lines_in_pixel` list
             lines_in_pixel.append({
-                'id': id,  # ID della linea
-                'x1': x_pixel[0],  # Coordinata x del primo punto in pixel
-                'y1': y_pixel[0],  # Coordinata y del primo punto in pixel
-                'x2': x_pixel[1],  # Coordinata x del secondo punto in pixel
-                'y2': y_pixel[1]  # Coordinata y del secondo punto in pixel
+                'id': id,  # Line ID
+                'x1': x_pixel[0],  # x-coordinate of the first point in pixels
+                'y1': y_pixel[0],  # y-coordinate of the first point in pixels
+                'x2': x_pixel[1],  # x-coordinate of the second point in pixels
+                'y2': y_pixel[1]  # y-coordinate of the second point in pixels
             })
         except ValueError as e:
             print(e)
 
-    return lines_in_real, lines_in_pixel  # Restituisce le due liste con le linee in coordinate reali e in pixel
-
-
-def get_points_from_lines(lines_in_pixel):
-    """
-    Estrae una lista di ID e un vettore di punti (tuple x, y) dalle linee fornite.
-
-    :param lines_in_pixel: Lista di linee, ciascuna rappresentata da un dizionario con i campi:
-        'id': ID della linea,
-        'x1': Coordinata x del primo punto,
-        'y1': Coordinata y del primo punto,
-        'x2': Coordinata x del secondo punto,
-        'y2': Coordinata y del secondo punto.
-    :return: Una tupla (ids, points) dove:
-        - ids: Lista di ID delle linee.
-        - points: Lista di tuple (x, y) con i punti delle linee.
-    """
-    ids = []
-    points = []
-
-    for line in lines_in_pixel:
-        # Aggiungi l'ID della linea
-        ids.append(line['id'])
-
-        # Aggiungi i punti della linea
-        points.append((line['x1'], line['y1']))
-        points.append((line['x2'], line['y2']))
-    return ids, points
+    return lines_in_pixel
 
 
 def get_lines_info():
     """
-    Genera informazioni dettagliate sulle linee, includendo ID, punti iniziali e finali,
-    posizione del testo e direzione della freccia.
+    This function processes the lines, extracts their IDs and coordinates, calculates the text position
+    for labeling and computes the direction for the arrow placement.
 
-    :return: Una lista di dizionari contenenti:
-        - 'line_id': ID della linea.
-        - 'start_point': Punto iniziale della linea (x, y).
-        - 'end_point': Punto finale della linea (x, y).
-        - 'text_position': Coordinate per la posizione del testo (x, y).
-        - 'arrow_start': Punto di partenza della freccia (x, y).
-        - 'arrow_end': Punto di fine della freccia (x, y).
+    Returns:
+    info_lines : list
+        A list of dictionaries, each containing the following keys:
+        - 'line_id': ID of the line
+        - 'start_point': starting point of the line
+        - 'end_point': ending point of the line
+        - 'id_position': coordinates for the id position
+        - 'start_arrow': starting point of the arrow
+        - 'end_arrow': ending point of the arrow
+        - 'crossing_counting': the number of times the line has been crossed
     """
-    _, lines = load_lines()
-    ids, points = get_points_from_lines(lines)
-    info_lines = []
-    crossing_counting = 0
+    # Load the lines from the configuration file
+    lines_in_pixel = load_lines()
+
+    # Initialize empty lists to store the line IDs and points
+    ids = []
+    points = []
+
+    # Iterate through the lines in the input list
+    for line in lines_in_pixel:
+        # Add the line ID to the 'ids' list
+        ids.append(line['id'])
+
+        # Add the start and end points of the line to the 'points' list
+        points.append((line['x1'], line['y1']))  # First point
+        points.append((line['x2'], line['y2']))  # Second point
+
+    info_lines = []  # List to store the detailed information of the lines
+    crossing_counting = 0  # Initialize the crossing counter
+
+    # Process each line to generate detailed information
     for i in range(len(ids)):
-        j = i * 2  # Per ogni id devo prendere 2 punti
-        # Prendi i punti e l'ID associato
+        line_id = ids[i]
+
+        # Get the start and end points for the current line
+        j = i * 2  # Each ID corresponds to two points (start and end)
         start_point = points[j]
         end_point = points[j + 1]
 
-        # Converti i punti in interi
+        # Convert points to integers
         start_point = (int(start_point[0]), int(start_point[1]))
         end_point = (int(end_point[0]), int(end_point[1]))
 
-        line_id = int(ids[i])
+        # Calculate the text position slightly above the start of the line
+        id_position = (start_point[0] + 10, start_point[1] - 10)
 
-        # Disegna l'ID in alto a sinistra della linea
-        text_position = (start_point[0] + 10, start_point[1] - 10)  # Posizione leggermente sopra l'inizio della linea
-
-        # Calcola la direzione perpendicolare verso l'alto
+        # Calculate the vector pointing from the start_point to the end_point
         dx = start_point[0] - end_point[0]
         dy = start_point[1] - end_point[1]
+
+        # Euclidean distance between the start and end points
         length = np.sqrt(dx ** 2 + dy ** 2)
+
+        # Calculate the normalized components of the vector
         unit_dx = dx / length
         unit_dy = dy / length
 
-        # Perpendicolare verso l'alto
+        # Perpendicular direction (rotation of vector by 90 degrees)
         perp_dx = -unit_dy
         perp_dy = unit_dx
 
-        # Punto medio della linea
+        # Calculate the midpoint of the line
         mid_x = (start_point[0] + end_point[0]) // 2
         mid_y = (start_point[1] + end_point[1]) // 2
 
-        # Calcola la posizione della freccia
-        arrow_start = (int(mid_x), int(mid_y))
-        arrow_lenght = 25
-        arrow_end = (int(mid_x + perp_dx * arrow_lenght), int(mid_y + perp_dy * arrow_lenght))
+        # Calculate the arrow position
+        arrow_length = 25  # Length of the arrow
+        start_arrow = (int(mid_x), int(mid_y))
+        end_arrow = (int(mid_x + perp_dx * arrow_length), int(mid_y + perp_dy * arrow_length))
 
+        # Append the line's detailed information to the list
         info_lines.append({
-            'line_id': line_id,  # ID della linea
-            'start_point': start_point,  # Punto di inizio della linea
-            'end_point': end_point,  # Punto di fine della linea
-            'text_position': text_position,  # Coordinate del testo
-            'arrow_start': arrow_start,  # Coordinate del punto dell'inizio della freccia
-            'arrow_end': arrow_end,  # Coordinate del punto della fine della freccia
-            'crossing_counting': crossing_counting  # Numero di volte che la linea è stata attraversata
+            'line_id': line_id,  # ID of the line
+            'start_point': start_point,  # Starting point of the line
+            'end_point': end_point,  # Ending point of the line
+            'id_position': id_position,  # Position for the text label
+            'start_arrow': start_arrow,  # Starting point of the arrow
+            'end_arrow': end_arrow,  # Ending point of the arrow
+            'crossing_counting': crossing_counting  # Number of times the line has been crossed (initially 0)
         })
 
     return info_lines
@@ -291,25 +263,15 @@ def check_crossed_line(track, lines_info):
         line_id = line['line_id']
         start_point = line['start_point']
         end_point = line['end_point']
-        arrow_start = line['arrow_start']
-        arrow_end = line['arrow_end']
+        start_arrow = line['start_arrow']
+        end_arrow = line['end_arrow']
         end_track = track[len(track) - 1]
         start_track = track[len(track) - 2]
         if interseca(start_track, end_track, start_point, end_point):
             vet_track = np.array([end_track[0] - start_track[0], end_track[1] - start_track[1]])
-            vet_line = np.array([arrow_end[0] - arrow_start[0], arrow_end[1] - arrow_start[1]])
+            vet_line = np.array([end_arrow[0] - start_arrow[0], end_arrow[1] - start_arrow[1]])
             dot_product = np.dot(vet_track, vet_line)
             if dot_product > 0:
                 increment_crossing_counting(line)
                 crossed_line_id.append(line_id)
     return crossed_line_id
-
-# Testing del codice
-if __name__ == "__main__":
-    lines_info = get_lines_info()
-    print(lines_info)
-    image = cv2.imread("videos/test.png")
-    image = draw_lines_on_frame(image, lines_info)
-    cv2.imshow("Immagine con linee disegnate", image)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()

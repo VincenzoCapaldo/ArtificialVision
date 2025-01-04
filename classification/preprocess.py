@@ -44,7 +44,7 @@ def calculate_class_weights_from_file(file_path='./dataset/training_set.txt'):
     return class_weights, labels
 
 
-def plot_label_distribution(labels, output_path='./classification_andrea/statistics/'):
+def plot_label_distribution(labels, output_path='./classification/statistics/'):
     """
     Crea istogrammi per la distribuzione delle etichette (gender, bag, hat).
 
@@ -76,8 +76,8 @@ def dividi_train_val(input_file, train_file, val_file, train_ratio=0.8, random_s
 
     Args:
         input_file (str): Percorso del file di input.
-        train_file (str): Percorso del file di output per il training set.
-        val_file (str): Percorso del file di output per il validation set.
+        train_file (str): Percorso del file di result per il training set.
+        val_file (str): Percorso del file di result per il validation set.
         train_ratio (float): Proporzione di dati da assegnare al training set (default 0.8).
         random_seed (int, optional): Seed per il generatore di numeri casuali per garantire riproducibilità.
     """
@@ -99,7 +99,7 @@ def dividi_train_val(input_file, train_file, val_file, train_ratio=0.8, random_s
     train_lines = lines[:split_index]
     val_lines = lines[split_index:]
 
-    # Scrivi le righe nei rispettivi file di output
+    # Scrivi le righe nei rispettivi file di result
     with open(train_file, 'w') as train_outfile:
         train_outfile.writelines(train_lines)
 

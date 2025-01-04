@@ -1,19 +1,17 @@
 import os
-
 import cv2 as cv
 import numpy as np
 
 
 def add_bounding_box(frame, top_left_corner, bottom_right_corner, color=(0, 0, 255), thickness=4):
     """
-    Add bounding box around detected people
+    add bounding box around detected people
     :param frame: frame on which to draw the bounding box
     :param top_left_corner: (x,y) coordinate of the top left corner of the bounding box
     :param bottom_right_corner: (x,y) coordinate of the bottom right corner of the bounding box
-    :param color: (optional) border color of the bounding box
-    :param thickness: (optional) thickness of the bounding box
+    :param color: border color of the bounding box (optional, default is red)
+    :param thickness: thickness of the bounding box (optional, default is 4)
     """
-
     cv.rectangle(frame, (top_left_corner[0], top_left_corner[1]),
                  (bottom_right_corner[0], bottom_right_corner[1]),
                  color, thickness)
@@ -25,68 +23,77 @@ def add_track_id(frame, track_id, top_left_corner, background_color=(255, 255, 2
     :param frame: the frame on which to draw the given id
     :param track_id: the id to display
     :param top_left_corner: (x, y) coordinate
-    :param background_color: (optional) background color of the rectangle
-    :param text_color: (optional) text color for the track_id
+    :param background_color: background color of the rectangle (optional, default is white)
+    :param text_color: text color for the track_id (optional, default is blue)
     """
+    # Define the text to display (tracking ID)
     text = f"{track_id}"
+
+    # Set the font scale and thickness
     font_scale = 0.6
     font_thickness = 2
     font = cv.FONT_HERSHEY_SIMPLEX
+
+    # Calculate the text size for positioning
     text_size = cv.getTextSize(text, font, font_scale, font_thickness)[0]
-    text_x, text_y = top_left_corner[0] + 5, top_left_corner[1] + 20  # Slightly offset inside the BB
+
+    # Position the text (slightly offset from the top-left corner)
+    text_x, text_y = top_left_corner[0] + 5, top_left_corner[1] + 20
     text_width, text_height = text_size[0], text_size[1]
-    background_start = (text_x - 2, text_y - text_height - 2)  # Add padding
+
+    # Define the coordinates for the background rectangle (with padding)
+    background_start = (text_x - 2, text_y - text_height - 2)
     background_end = (text_x + text_width + 2, text_y + 2)
 
-    # Draw white rectangle as background for the given id
+    # Draw a white rectangle as the background for the ID
     cv.rectangle(frame, background_start, background_end, background_color, -1)
 
-    # Draw track ID in red over the background
+    # Write the tracking ID in the rectangle on top of the background
     cv.putText(
         frame,
         text,
         (text_x, text_y),
         font,
         font_scale,
-        text_color,  # Red color
+        text_color,
         font_thickness)
 
 
-def add_info_scene(frame, text, top_left_corner = (10, 10), font_scale = 0.8, font_thickness = 2):
+def add_info_scene(frame, text, top_left_corner=(10, 10), font_scale=0.8, font_thickness=2):
     """
-    Display the general information in the top left corner of the frame
+    display the general information in the top left corner of the frame
     :param frame: the frame on which to draw the information
-    :param text: vector which contains all the information to display
-    :param top_left_corner: starting point of the box
-    :param font_scale: font scale of the displayed text
-    :param font_thickness: font thickness of the displayed text
+    :param text: a list of strings containing all the information to display
+    :param top_left_corner: the starting point of the bounding box (optional, default is (10, 10)).
+    :param font_scale: the font scale of the displayed text (optional, default is 0.8)
+    :param font_thickness: the font thickness of the displayed text (optional, default is 2)
     """
     font = cv.FONT_HERSHEY_SIMPLEX
-    text_size = []
     text_width = []
     text_height = []
-    # Calcolo della dimensione del testo
+
+    # Calculate the size of each line of text
     for t in text:
         text_size = cv.getTextSize(t, font, font_scale, font_thickness)[0]
         text_width.append(text_size[0])
         text_height.append(text_size[1])
 
-    # Definizione della posizione del rettangolo
-    padding = 10  # Spazio extra intorno al testo
-    # top_left_corner = (padding, padding)
+    # Calculate the bottom-right corner of the bounding box based on the text size
+    padding = 10  # Extra space around the text
     bottom_right_corner = (
-    top_left_corner[0] + max(text_width) + 2 * padding, top_left_corner[1] + sum(text_height) + 2 * len(text) * padding)
+        top_left_corner[0] + max(text_width) + 2 * padding,
+        top_left_corner[1] + sum(text_height) + 2 * len(text) * padding
+    )
 
+    # Draw a white rectangle to serve as the background for the text
     background_color = (255, 255, 255)
-    # Disegna il rettangolo bianco
     cv.rectangle(frame, top_left_corner, bottom_right_corner, background_color, -1)
 
-    # Scrivi il testo sopra il rettangolo
+    # Loop through the text and write each line on the frame
     total_height = top_left_corner[1]
     for i in range(len(text)):
         text_position_x = top_left_corner[0] + padding
         text_position_y = total_height + text_height[0] + (2 * padding) - 5
-
         total_height = text_position_y
         text_position = (text_position_x, text_position_y)
         cv.putText(
@@ -95,61 +102,63 @@ def add_info_scene(frame, text, top_left_corner = (10, 10), font_scale = 0.8, fo
             text_position,
             font,
             font_scale,
-            (0, 0, 0),  # Colore nero per il testo
+            (0, 0, 0),
             font_thickness
         )
 
 
-# Funzione per disegnare le linee sui frame
 def draw_lines_on_frame(frame, lines_info):
     """
-    Draws blue lines given by lines_info
-    :param frame: current frame, given in numpy array format
-    :param lines_info: list of dictionaries with line information, generated by get_lines_info.
+    draws blue lines on the frame as defined by the lines_info list
+    :param frame: the current frame, given in numpy array format
+    :param lines_info: a list of dictionaries containing line information, generated by the get_lines_info function
+    :return: the modified frame with the drawn lines, text, and arrow
     """
+    # Get the height and width of the frame
     height, width = frame.shape[:2]
+
+    # Loop through each line in the lines_info list
     for line in lines_info:
-        # extract the information about the line
+        # Extract the information about the line from the dictionary
         line_id = line['line_id']
         start_point = line['start_point']
         end_point = line['end_point']
-        text_position = line['text_position']
-        arrow_start = line['arrow_start']
-        arrow_end = line['arrow_end']
+        id_position = line['id_position']
+        start_arrow = line['start_arrow']
+        end_arrow = line['end_arrow']
 
-        # Clipping delle coordinate nei limiti dell'immagine, per evitare problemi al confine (forse da mettere nella funzione precedente per ridurre la computazione)
-        # questa funzione si trovava nel file lines_utils tra la funzione intersaca e checked  cross line
+        # Clip the coordinates to ensure they are within the image boundaries
         start_point = (np.clip(start_point[0], 0, width - 1), np.clip(start_point[1], 0, height - 1))
         end_point = (np.clip(end_point[0], 0, width - 1), np.clip(end_point[1], 0, height - 1))
-        text_position = (np.clip(text_position[0], 0, width - 1), np.clip(text_position[1], 0, height - 1))
-        arrow_start = (np.clip(arrow_start[0], 0, width - 1), np.clip(arrow_start[1], 0, height - 1))
-        arrow_end = (np.clip(arrow_end[0], 0, width - 1), np.clip(arrow_end[1], 0, height - 1))
+        id_position = (np.clip(id_position[0], 0, width - 1), np.clip(id_position[1], 0, height - 1))
+        arrow_start = (np.clip(start_arrow[0], 0, width - 1), np.clip(start_arrow[1], 0, height - 1))
+        arrow_end = (np.clip(end_arrow[0], 0, width - 1), np.clip(end_arrow[1], 0, height - 1))
 
-        # Disegna la linea blu
+        # Draw the blue line on the frame
         cv.line(frame, start_point, end_point, (255, 0, 0), thickness=3)
 
-        # Disegna l'ID in alto a sinistra della linea
-        cv.putText(frame, str(line_id), text_position, cv.FONT_HERSHEY_SIMPLEX, 0.8, (255, 0, 0), thickness=3)
+        # Draw the line ID
+        cv.putText(frame, str(line_id), id_position, cv.FONT_HERSHEY_SIMPLEX, 0.8, (255, 0, 0), thickness=3)
 
-        # Disegna la freccia
+        # Draw the arrow
         cv.arrowedLine(frame, arrow_start, arrow_end, (255, 0, 0), thickness=3, tipLength=0.5)
 
     return frame
 
-def screen_save(frame,top_left_corner,bottom_right_corner,id):
-    if not os.path.exists("./screen"):
-        os.makedirs("./screen")
-    x1,y1 = top_left_corner[0], top_left_corner[1]
-    x2,y2 = bottom_right_corner[0], bottom_right_corner[1]
-    cropped_image = frame[y1:y2, x1:x2]
-    # Salva lo screenshot della bounding box
-    output_path = f"./screen/bounding_box_screenshot{id}.jpg"
-    cv.imwrite(output_path, cropped_image)
 
-
-def screen(frame, top_left_corner, bottom_right_corner):
+def get_bounding_box_image(frame, top_left_corner, bottom_right_corner):
+    """
+    crops a region of the frame based on the provided top-left and bottom-right corner coordinates
+    :param frame: the input frame (image) to crop
+    :param top_left_corner: the (x, y) coordinates of the top-left corner of the region to crop
+    :param bottom_right_corner: the (x, y) coordinates of the bottom-right corner of the region to crop
+    :return: the cropped image, which is a subregion of the original frame
+    """
+    # Extract the coordinates of the top-left and bottom-right corners
     x1, y1 = top_left_corner[0], top_left_corner[1]
     x2, y2 = bottom_right_corner[0], bottom_right_corner[1]
+
+    # Crop the frame by slicing it using the coordinates
     cropped_image = frame[y1:y2, x1:x2]
-    # restituisce lo screenshot della bounding box
+
     return cropped_image

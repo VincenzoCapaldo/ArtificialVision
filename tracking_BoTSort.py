@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image
 from ultralytics import YOLO
 from OutputWriter import OutputWriter
-from classification_andrea.nets import PARMultiTaskNet
+from classification.nets import PARMultiTaskNet
 from lines_utils import get_lines_info, check_crossed_line
 import time
 import gui_utils as gui
@@ -12,8 +12,9 @@ import torch
 import torchvision.transforms as T
 from collections import defaultdict
 
-def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio.mp4", show=False, real_time=True, tracker="confs/botsort.yaml"):
 
+def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio.mp4", show=False, real_time=True,
+                tracker="confs/botsort.yaml"):
     """
     Main function to perform people tracking in a video using a pre-trained YOLO model.
 
@@ -32,12 +33,12 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
     # Load lines info
     lines_info = get_lines_info()
 
-    # Create an output-writer object to write on a json file the results
+    # Create an result-writer object to write on a json file the results
     output_writer = OutputWriter()
 
     # Open the video file
     cap = cv2.VideoCapture(video_path)
-    fps = int(cap.get(cv2.CAP_PROP_FPS)+1)
+    fps = int(cap.get(cv2.CAP_PROP_FPS) + 1)
 
     # Store the track history (for each ID, its trajectory)
     track_history = defaultdict(lambda: [])
@@ -59,8 +60,6 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
 
     lista_attraversamenti = {}  # Stores the lines traversed by each ID
     lista_persone = []
-    current_pedestrian_attributes = {}
-    pedestrian_attributes = {}
 
     probability_sum_gender = defaultdict(float)
     denominator_gender = defaultdict(float)
@@ -116,7 +115,7 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                 # Gestione delle traiettorie e disegno delle linee di tracciamento
                 track = track_history[track_id]
                 trajectory_point = 30  # Maintain up to 30 tracking points
-                track.append((float(x), float(y+h/2)))  # x, y center point ''' (lower center of the bounding box) '''
+                track.append((float(x), float(y + h / 2)))  # x, y center point ''' (lower center of the bounding box) '''
                 if len(track) > trajectory_point:  # retain 90 tracks for 90 frames
                     track.pop(0)
 
@@ -126,13 +125,13 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
 
                 #checking crossed lines
                 crossed_line_id = check_crossed_line(track, lines_info)
-                if(len(crossed_line_id)!=0):
-                    if not(track_id in lista_attraversamenti):
+                if (len(crossed_line_id) != 0):
+                    if not (track_id in lista_attraversamenti):
                         lista_attraversamenti[track_id] = []
                     lista_attraversamenti[track_id].extend(crossed_line_id)
 
                 # Inferenza
-                screen = gui.screen(frame, top_left_corner, bottom_right_corner)
+                screen = gui.get_bounding_box_image(frame, top_left_corner, bottom_right_corner)
                 image = transforms(Image.fromarray(screen).convert('RGB')).to(device)
                 image = image.unsqueeze(0)  # Aggiunge una dimensione batch
                 outputs = classification(image)
@@ -198,8 +197,8 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
         if real_time:
             ms_per_frame = 1 / fps
             elapsed_time = end_time - start_time
-            discard_frames = int(elapsed_time/ms_per_frame)+1
-            d2 = int(discard_frames + ((discard_frames * (end_read_time-start_read_time))/ms_per_frame))+1
+            discard_frames = int(elapsed_time / ms_per_frame) + 1
+            d2 = int(discard_frames + ((discard_frames * (end_read_time - start_read_time)) / ms_per_frame)) + 1
             while d2 > 0 and not first_frame:
                 cap.read()
                 d2 -= 1
@@ -217,7 +216,7 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
     #     trajectory = lista_attraversamenti[id]
     #     output_writer.set_trajectory(id, trajectory)
 
-    # Print people info on "./output/output.json" file
+    # Print people info on "./result/result" file
     #output_writer.write_output()
 
     # Release the video capture object and close the display window

@@ -78,11 +78,11 @@ class OutputWriter:
                 return
         raise ValueError(f"Person with ID {person_id} not found.")
 
-    def write_output(self, filename="./output/output.json"):
+    def write_output(self, filename="./result/result"):
         """
         Write the stored information in a JSON file.
 
-        :param filename: str, name of the output file
+        :param filename: str, name of the result file
         """
         output = {"people": self.people}
         with open(filename, 'w') as file:

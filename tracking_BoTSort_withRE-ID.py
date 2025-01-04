@@ -6,7 +6,7 @@ from PIL import Image
 from boxmot import BoTSORT
 from ultralytics import YOLO
 from OutputWriter import OutputWriter
-from classification_andrea.nets import PARMultiTaskNet
+from classification.nets import PARMultiTaskNet
 from lines_utils import get_lines_info, check_crossed_line
 import time
 import gui_utils as gui
@@ -49,7 +49,7 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
     # Load lines info
     lines_info = get_lines_info()
 
-    # Create an output-writer object to write on a json file the results
+    # Create an result-writer object to write on a json file the results
     output_writer = OutputWriter()
 
     # Open the video file
@@ -275,7 +275,7 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
         trajectory = lista_attraversamenti[id]
         output_writer.set_trajectory(id, trajectory)
 
-    # Print people info on "./output/output.json" file
+    # Print people info on "./result/result" file
     output_writer.write_output()
 
     # Release the video capture object and close the display window

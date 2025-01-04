@@ -191,7 +191,7 @@ def main():
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
     parser.add_argument('--momentum', type=float, default=0.9, help='Momentum')
     parser.add_argument('--device', type=str, default='cuda', help='Device: cuda o cpu')
-    parser.add_argument('--checkpoint_dir', type=str, default='./classification_andrea/checkpoints',
+    parser.add_argument('--checkpoint_dir', type=str, default='./classification/checkpoints',
                         help='Directory dei checkpoint')
     parser.add_argument('--resume_checkpoint', type=bool, default=False)
     parser.add_argument('--patience', type=int, default=7)

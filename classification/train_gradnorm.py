@@ -308,7 +308,7 @@ def main():
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate classification heads')
     parser.add_argument('--momentum', type=float, default=0.9, help='Momentum')
     parser.add_argument('--device', type=str, default='cuda', help='Device: cuda o cpu')
-    parser.add_argument('--checkpoint_dir', type=str, default='./classification_andrea/checkpoints',
+    parser.add_argument('--checkpoint_dir', type=str, default='./classification/checkpoints',
                         help='Directory dei checkpoint')
     parser.add_argument('--resume_checkpoint', type=bool, default=False)
     parser.add_argument('--patience', type=int, default=7
@@ -422,7 +422,7 @@ def main():
         plt.grid(True)
 
         # Save the figure to the specified path
-        save_path = "./classification_andrea/checkpoints/weight_evolution.png"
+        save_path = "./classification/checkpoints/weight_evolution.png"
         plt.savefig(save_path, dpi=300)
         plt.close()
         print(f"Weight evolution plot saved at: {save_path}")

@@ -42,7 +42,7 @@ def test_model(model, dataloader, device):
 
     # Calcolo delle metriche per ogni task
     metrics = {}
-    output_dir = "./classification_andrea/confusion_matrices"  # Directory per salvare le matrici di confusione
+    output_dir = "./classification/confusion_matrices"  # Directory per salvare le matrici di confusione
     os.makedirs(output_dir, exist_ok=True)
 
     for task in ["gender", "bag", "hat"]:
@@ -74,7 +74,7 @@ def test_model(model, dataloader, device):
 if __name__ == "__main__":
     # Configurazioni del test
     data_dir = './dataset'
-    model_path = './classification_andrea/checkpoints/resnet50.pth'
+    model_path = './classification/checkpoints/resnet50.pth'
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Caricamento del dataset di test
