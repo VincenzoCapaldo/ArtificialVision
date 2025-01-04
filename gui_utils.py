@@ -16,17 +16,17 @@ def add_bounding_box(frame, top_left_corner, bottom_right_corner, color=(0, 0, 2
                  color, thickness)
 
 
-def add_track_id(frame, track_id, top_left_corner, background_color=(255, 255, 255), text_color=(0, 0, 225)):
+def add_people_id(frame, people_id, top_left_corner, background_color=(255, 255, 255), text_color=(0, 0, 225)):
     """
     add the people id inside the bounding box
     :param frame: the frame on which to draw the given id
-    :param track_id: the id to display
+    :param people_id: the people id to display
     :param top_left_corner: (x, y) coordinate
     :param background_color: background color of the rectangle (optional, default is white)
     :param text_color: text color for the track_id (optional, default is blue)
     """
     # Define the text to display (tracking ID)
-    text = f"{track_id}"
+    text = f"{people_id}"
 
     # Set the font scale and thickness
     font_scale = 0.6

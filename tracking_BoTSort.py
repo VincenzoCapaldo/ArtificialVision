@@ -83,17 +83,17 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/video
             if results[0] is not None and results[0].boxes is not None and results[0].boxes.id is not None:
                 # Get the boxes and track IDs
                 boxes = results[0].boxes.xywh.cpu()
-                track_ids = results[0].boxes.id.int().cpu().tolist()
+                people_ids = results[0].boxes.id.int().cpu().tolist()
 
                 # Visualize the results on the frame
                 annotated_frame = frame.copy()
 
                 # Plot the tracks
-                for box, track_id in zip(boxes, track_ids):
+                for box, people_id in zip(boxes, people_ids):
 
                     # Add a new person (se non è già presente)
-                    if track_id not in lista_persone:
-                        lista_persone.append(track_id)
+                    if people_id not in lista_persone:
+                        lista_persone.append(people_id)
 
                     x, y, w, h = box
                     top_left_corner = (int(x - w / 2), int(y - h / 2))
@@ -101,34 +101,33 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/video
                     bottom_left_corner = (int(x - w / 2), int(y + h / 2))
 
                     # general information of the scene to display
-                    text = [f"Total People: {len(track_ids)}"]
+                    text = [f"Total People: {len(people_ids)}"]
                     for line in lines_info:
                         text.append(f"Passages for line {line['line_id']}: {line['crossing_counting']}")
 
                     # Draw red bounding box
                     gui.add_bounding_box(annotated_frame, top_left_corner, bottom_right_corner)
                     # Draw the tracked people ID
-                    gui.add_track_id(annotated_frame, track_id, top_left_corner)
+                    gui.add_people_id(annotated_frame, people_id, top_left_corner)
                     # Draw general information about the scene
                     gui.add_info_scene(annotated_frame, text)
                     # Draw lines
                     annotated_frame = gui.draw_lines_on_frame(annotated_frame, lines_info)
                     # share bounding box
 
-                    # FINE DISEGNI, INIZIO DISEGNI TRACCE
                     # Gestione delle traiettorie e disegno delle linee di tracciamento
-                    track = track_history[track_id]
-                    trajectory_point = 2  # Maintain up to 3 tracking points
+                    track = track_history[people_id]
+                    trajectory_point = 2  # Maintain up to 2 tracking points
                     track.append((float(x), float(y + h / 2)))  # x, y center point ''' (lower center of the bounding box) '''
-                    if len(track) > trajectory_point:  # retain 5 tracks
+                    if len(track) > trajectory_point: 
                         track.pop(0)
 
                     # checking crossed lines
                     crossed_line_ids = check_crossed_lines(track, lines_info)
                     if len(crossed_line_ids) != 0:
-                        if not (track_id in lista_attraversamenti):
-                            lista_attraversamenti[track_id] = []
-                        lista_attraversamenti[track_id].extend(crossed_line_ids)
+                        if not (people_id in lista_attraversamenti):
+                            lista_attraversamenti[people_id] = []
+                        lista_attraversamenti[people_id].extend(crossed_line_ids)
 
                     # Inferenza
                     if frame_count % INFERENCE_RATE == 0:
@@ -142,16 +141,16 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/video
                             probability[task] = torch.sigmoid(outputs[task]).item()
 
                         # Calcolo della media aritmetica
-                        probability_sum_gender[track_id] += probability["gender"]
-                        denominator_gender[track_id] += 1
-                        probability_sum_bag[track_id] += probability["bag"]
-                        denominator_bag[track_id] += 1
-                        probability_sum_hat[track_id] += probability["hat"]
-                        denominator_hat[track_id] += 1
+                        probability_sum_gender[people_id] += probability["gender"]
+                        denominator_gender[people_id] += 1
+                        probability_sum_bag[people_id] += probability["bag"]
+                        denominator_bag[people_id] += 1
+                        probability_sum_hat[people_id] += probability["hat"]
+                        denominator_hat[people_id] += 1
 
-                        gender = 1 if (probability_sum_gender[track_id] / denominator_gender[track_id]) > 0.5 else 0
-                        bag = 1 if (probability_sum_bag[track_id] / denominator_bag[track_id]) > 0.5 else 0
-                        hat = 1 if (probability_sum_hat[track_id] / denominator_hat[track_id]) > 0.5 else 0
+                        gender = 1 if (probability_sum_gender[people_id] / denominator_gender[people_id]) > 0.5 else 0
+                        bag = 1 if (probability_sum_bag[people_id] / denominator_bag[people_id]) > 0.5 else 0
+                        hat = 1 if (probability_sum_hat[people_id] / denominator_hat[people_id]) > 0.5 else 0
 
                         # Costruisci la lista di attributi da mostrare
                         if gender:
@@ -167,7 +166,7 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/video
                         if bag and hat:
                             pedestrian_attribute.append("Bag Hat")
 
-                        pedestrian_attribute.append(f"[{', '.join(map(str, lista_attraversamenti.get(track_id, [])))}]")
+                        pedestrian_attribute.append(f"[{', '.join(map(str, lista_attraversamenti.get(people_id, [])))}]")
 
                     # Disegna gli attributi sotto il bounding box
                     gui.add_info_scene(annotated_frame, pedestrian_attribute, bottom_left_corner, 0.5, 2)
@@ -194,11 +193,11 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/video
     # Scrittura dei risultati su file
     # Create a result-writer object to write on a json file the results
     output_writer = OutputWriter()
-    for track_id in lista_persone:
-        gender = 1 if (probability_sum_gender[track_id] / denominator_gender[track_id]) > 0.5 else 0
-        bag = 1 if (probability_sum_bag[track_id] / denominator_bag[track_id]) > 0.5 else 0
-        hat = 1 if (probability_sum_hat[track_id] / denominator_hat[track_id]) > 0.5 else 0
-        trajectory = lista_attraversamenti[track_id] if track_id in lista_attraversamenti else []
-        output_writer.add_person(track_id, gender, bag, hat, trajectory)
+    for people_id in lista_persone:
+        gender = 1 if (probability_sum_gender[people_id] / denominator_gender[people_id]) > 0.5 else 0
+        bag = 1 if (probability_sum_bag[people_id] / denominator_bag[people_id]) > 0.5 else 0
+        hat = 1 if (probability_sum_hat[people_id] / denominator_hat[people_id]) > 0.5 else 0
+        trajectory = lista_attraversamenti[people_id] if people_id in lista_attraversamenti else []
+        output_writer.add_person(people_id, gender, bag, hat, trajectory)
 
     output_writer.write_output()
