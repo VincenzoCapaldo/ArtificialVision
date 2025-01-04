@@ -16,7 +16,7 @@ def main():
     print(f"Using device: {device}")
 
     # Path to the input video file
-    video_path = 'videos/video_goat.mp4'
+    video_path = 'videos/Atrio.mp4'
 
     # Flag to control if the processed video should be displayed
     show = True

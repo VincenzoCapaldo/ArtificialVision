@@ -47,7 +47,7 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
 
     # Caricamento del modello per la classificazione
     classification = PARMultiTaskNet(backbone='resnet50', pretrained=False, attention=True).to(device)
-    checkpoint_path = './models/resnet50 con adam.pth'
+    checkpoint_path = './models/classification_model.pth'
     checkpoint = torch.load(checkpoint_path, map_location=device)
     classification.load_state_dict(checkpoint['model_state'])
     classification.eval()
@@ -127,15 +127,10 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                     # FINE DISEGNI, INIZIO DISEGNI TRACCE
                     # Gestione delle traiettorie e disegno delle linee di tracciamento
                     track = track_history[track_id]
-                    trajectory_point = 5  # Maintain up to 30 tracking points
-                    track.append(
-                        (float(x), float(y + h / 2)))  # x, y center point ''' (lower center of the bounding box) '''
+                    trajectory_point = 2  # Maintain up to 3 tracking points
+                    track.append((float(x), float(y + h / 2)))  # x, y center point ''' (lower center of the bounding box) '''
                     if len(track) > trajectory_point:  # retain 5 tracks
                         track.pop(0)
-
-                    # Draw the tracking lines
-                    # points = np.hstack(track).astype(np.int32).reshape((-1, 1, 2))
-                    # cv2.polylines(annotated_frame, [points], isClosed=False, color=(230, 230, 230), thickness=10)
 
                     # checking crossed lines
                     crossed_line_ids = check_crossed_lines(track, lines_info)
@@ -151,11 +146,9 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                         image = image.unsqueeze(0)  # Aggiunge una dimensione batch
                         outputs = classification(image)
 
-                        prediction = {}
                         probability = {}
                         for task in ["gender", "bag", "hat"]:
                             probability[task] = torch.sigmoid(outputs[task]).item()
-                            prediction[task] = 1 if probability[task] > 0.5 else 0
 
                         # Calcolo della media aritmetica
                         probability_sum_gender[track_id] += probability["gender"]
@@ -171,9 +164,9 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
 
                         # Costruisci la lista di attributi da mostrare
                         if gender:
-                            pedestrian_attribute = [f"Gender: F"]
+                            pedestrian_attribute = ["Gender: F"]
                         else:
-                            pedestrian_attribute = [f"Gender: M"]
+                            pedestrian_attribute = ["Gender: M"]
                         if not bag and not hat:
                             pedestrian_attribute.append("No Bag No Hat")
                         if bag and not hat:
@@ -186,7 +179,7 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                         pedestrian_attribute.append(f"[{', '.join(map(str, lista_attraversamenti.get(track_id, [])))}]")
 
                     # Disegna gli attributi sotto il bounding box
-                    #gui.add_info_scene(annotated_frame, pedestrian_attribute, bottom_left_corner, 0.5, 2)
+                    gui.add_info_scene(annotated_frame, pedestrian_attribute, bottom_left_corner, 0.5, 2)
 
                 # Display the annotated frame
                 if show:
@@ -212,14 +205,7 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
         gender = 1 if (probability_sum_gender[track_id] / denominator_gender[track_id]) > 0.5 else 0
         bag = 1 if (probability_sum_bag[track_id] / denominator_bag[track_id]) > 0.5 else 0
         hat = 1 if (probability_sum_hat[track_id] / denominator_hat[track_id]) > 0.5 else 0
-        output_writer.add_person(track_id)
-        output_writer.set_gender(track_id, gender)
-        output_writer.set_bag(track_id, bag)
-        output_writer.set_hat(track_id, hat)
-
-    # Add trajectory for all the people
-    for track_id in lista_attraversamenti:
-        trajectory = lista_attraversamenti[track_id]
-        output_writer.set_trajectory(track_id, trajectory)
+        trajectory = lista_attraversamenti[track_id] if track_id in lista_attraversamenti else None
+        output_writer.add_person(track_id, gender, bag, hat, trajectory)
 
     output_writer.write_output()
