@@ -123,11 +123,11 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
                 cv2.polylines(annotated_frame, [points], isClosed=False, color=(230, 230, 230), thickness=10)
 
                 #checking crossed lines
-                crossed_line_id = check_crossed_lines(track, lines_info)
-                if (len(crossed_line_id) != 0):
+                crossed_line_ids = check_crossed_lines(track, lines_info)
+                if (len(crossed_line_ids) != 0):
                     if not (track_id in lista_attraversamenti):
                         lista_attraversamenti[track_id] = []
-                    lista_attraversamenti[track_id].extend(crossed_line_id)
+                    lista_attraversamenti[track_id].extend(crossed_line_ids)
 
                 # Inferenza
                 screen = gui.get_bounding_box_image(frame, top_left_corner, bottom_right_corner)
