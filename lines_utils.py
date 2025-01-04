@@ -181,7 +181,10 @@ def get_lines_info():
         end_point = (int(end_point[0]), int(end_point[1]))
 
         # Calculate the text position slightly above the start of the line
-        id_position = (start_point[0] + 10, start_point[1] - 10)
+        if start_point[0] < end_point[0]:
+            id_position = (start_point[0] - 15, start_point[1] - 15)
+        else:
+            id_position = (end_point[0] - 15, end_point[1] - 15)
 
         # Calculate the vector pointing from the start_point to the end_point
         dx = start_point[0] - end_point[0]
@@ -203,7 +206,7 @@ def get_lines_info():
         mid_y = (start_point[1] + end_point[1]) // 2
 
         # Calculate the arrow position
-        arrow_length = 25  # Length of the arrow
+        arrow_length = 50  # Length of the arrow
         start_arrow = (int(mid_x), int(mid_y))
         end_arrow = (int(mid_x + perp_dx * arrow_length), int(mid_y + perp_dy * arrow_length))
 
