@@ -1,5 +1,7 @@
+from os import name
+
 import numpy as np
-from math import pi, cos, sin
+from math import cos, sin
 import json
 import cv2
 from gui_utils import draw_lines_on_frame

@@ -47,7 +47,7 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/Atrio
 
     # Caricamento del modello per la classificazione
     classification = PARMultiTaskNet(backbone='resnet50', pretrained=False, attention=True).to(device)
-    checkpoint_path = './models/resnet50.pth'
+    checkpoint_path = './models/resnet50 con adam.pth'
     checkpoint = torch.load(checkpoint_path, map_location=device)
     classification.load_state_dict(checkpoint['model_state'])
     classification.eval()
