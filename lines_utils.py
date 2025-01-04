@@ -222,28 +222,79 @@ def get_lines_info():
     return info_lines
 
 
-def increment_crossing_counting(info_line):
-    info_line['crossing_counting'] += 1
+def orientation(p, q, r):
+    """
+    This function calculates the orientation of the triplet of points (p, q, r).
+    The orientation is determined by the cross product of the vectors pq and pr.
+    - If the result is positive, the points are in counter-clockwise order
+    - If the result is negative, the points are in clockwise order
+    - If the result is zero, the points are collinear
 
+    Parameters:
+    p : tuple
+        The first point (x1, y1)
+    q : tuple
+        The second point (x2, y2)
+    r : tuple
+        The third point (x3, y3)
 
-def orientamento(p, q, r):
+    Returns:
+    float
+        The orientation value (positive, negative, or zero)
+    """
     return (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
 
 
 def on_segment(p, q, r):
+    """
+    This function checks if point q lies on the segment pr.
+
+    Parameters:
+    p : tuple
+        The first point of the segment (x1, y1)
+    q : tuple
+        The point to check (x2, y2)
+    r : tuple
+        The second point of the segment (x3, y3)
+
+    Returns:
+    bool
+        True if point q lies on the segment pr, False otherwise
+    """
     return min(p[0], r[0]) <= q[0] <= max(p[0], r[0]) and min(p[1], r[1]) <= q[1] <= max(p[1], r[1])
 
 
-def interseca(p1, p2, p3, p4):
-    o1 = orientamento(p1, p2, p3)
-    o2 = orientamento(p1, p2, p4)
-    o3 = orientamento(p3, p4, p1)
-    o4 = orientamento(p3, p4, p2)
+def intersects(p1, p2, p3, p4):
+    """
+    This function determines whether the segment p1p2 intersects with the segment p3p4.
+    The function checks the orientations of the triplets (p1, p2, p3), (p1, p2, p4),
+    (p3, p4, p1), and (p3, p4, p2) to determine if the segments intersect.
+    It also handles collinear cases.
 
+    Parameters:
+    p1 : tuple
+        The first point of the first segment (x1, y1)
+    p2 : tuple
+        The second point of the first segment (x2, y2)
+    p3 : tuple
+        The first point of the second segment (x3, y3)
+    p4 : tuple
+        The second point of the second segment (x4, y4)
+
+    Returns:
+    bool
+        True if the segments intersect, False otherwise
+    """
+    o1 = orientation(p1, p2, p3)
+    o2 = orientation(p1, p2, p4)
+    o3 = orientation(p3, p4, p1)
+    o4 = orientation(p3, p4, p2)
+
+    # Check if the segments properly intersect
     if o1 * o2 < 0 and o3 * o4 < 0:
         return True
 
-    # Controllo per i casi di allineamento
+    # Check for collinear cases
     if o1 == 0 and on_segment(p1, p3, p2):
         return True
     if o2 == 0 and on_segment(p1, p4, p2):
@@ -256,22 +307,54 @@ def interseca(p1, p2, p3, p4):
     return False
 
 
-def check_crossed_line(track, lines_info):
-    crossed_line_id = []
+def check_crossed_lines(track, lines_info):
+    """
+    This function checks which lines in the lines_info list are crossed by the given track.
+    It checks if the last two points of the track intersect any of the lines and if the
+    direction of the track is in the same direction as the arrow on the line.
+
+    Parameters:
+    track : list
+        A list of points representing the track (each point is a tuple (x, y))
+    lines_info : list
+        A list of dictionaries representing the lines, where each dictionary contains:
+        - 'line_id': the ID of the line
+        - 'start_point': the start point of the line (x1, y1)
+        - 'end_point': the end point of the line (x2, y2)
+        - 'start_arrow': the start point of the arrow (x3, y3)
+        - 'end_arrow': the end point of the arrow (x4, y4)
+        - 'crossing_counting': the count of times the line has been crossed
+
+    Returns:
+    list
+        A list of the IDs of the lines that have been crossed.
+    """
+    crossed_line_ids = []  # List to store the IDs of crossed lines
+
     for line in lines_info:
-        # Estrai le informazioni dalla linea
+        # Extract line information
         line_id = line['line_id']
         start_point = line['start_point']
         end_point = line['end_point']
         start_arrow = line['start_arrow']
         end_arrow = line['end_arrow']
+
+        # Get the last two points of the track (representing the track's movement)
         end_track = track[len(track) - 1]
         start_track = track[len(track) - 2]
-        if interseca(start_track, end_track, start_point, end_point):
-            vet_track = np.array([end_track[0] - start_track[0], end_track[1] - start_track[1]])
-            vet_line = np.array([end_arrow[0] - start_arrow[0], end_arrow[1] - start_arrow[1]])
-            dot_product = np.dot(vet_track, vet_line)
+
+        # Check if the track segment intersects with the line
+        if intersects(start_track, end_track, start_point, end_point):
+            # Calculate the vectors for the track and the line's arrow
+            track_vector = np.array([end_track[0] - start_track[0], end_track[1] - start_track[1]])
+            arrow_vector = np.array([end_arrow[0] - start_arrow[0], end_arrow[1] - start_arrow[1]])
+
+            # Calculate the dot product to check if the track direction matches the arrow direction
+            dot_product = np.dot(track_vector, arrow_vector)
+
+            # If the dot product is positive, the track is moving in the same direction as the arrow
             if dot_product > 0:
-                increment_crossing_counting(line)
-                crossed_line_id.append(line_id)
-    return crossed_line_id
+                line['crossing_counting'] += 1  # Increment the crossing count
+                crossed_line_ids.append(line_id)  # Add the line ID to the list of crossed lines
+
+    return crossed_line_ids
