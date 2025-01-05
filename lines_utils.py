@@ -1,10 +1,6 @@
-from os import name
-
 import numpy as np
 from math import cos, sin
 import json
-import cv2
-from gui_utils import draw_lines_on_frame
 
 
 def mapping_3D_2D(x_real, y_real, config_file="confs/config.txt"):

@@ -30,8 +30,8 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/video
     model = YOLO(model_path).to(device)
 
     # Load the classification model for pedestrian attributes (gender, bag, hat)
-    classification = PARMultiTaskNet(backbone='resnet18', pretrained=False, attention=True).to(device)
-    checkpoint_path = './models/resnet18.pth'
+    classification = PARMultiTaskNet(backbone='resnet50', pretrained=False, attention=True).to(device)
+    checkpoint_path = './models/model5.pth'
     checkpoint = torch.load(checkpoint_path, map_location=device)
     classification.load_state_dict(checkpoint['model_state'])
     classification.eval()
@@ -48,7 +48,7 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/video
     probability_sum_bag = defaultdict(float)  # Stores cumulative bag probabilities for each person ID
     probability_sum_hat = defaultdict(float)  # Stores cumulative hat probabilities for each person ID
     number_of_inferences = {}  # Number of inferences made for each person ID
-    pedestrian_attributes = []  # List to store attributes (gender, bag, hat) of pedestrians
+    pedestrian_attributes = {}  # Dict to store attributes (gender, bag, hat) of pedestrians
     track_history = defaultdict(lambda: [])  # Stores the movement history (trajectory) of each person by their ID
     crossed_line_by_people = defaultdict(lambda: [])  # Stores the lines that have been crossed by each person ID
 
@@ -62,7 +62,7 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/video
     fps = int(cap.get(cv2.CAP_PROP_FPS) + 1)
 
     # Constant for processing frame rate and inference rate
-    PROCESSING_FRAME_RATE = 8  # Number of frames to process per second
+    PROCESSING_FRAME_RATE = 10  # Number of frames to process per second
     FRAME_TO_SKIP = int(fps / PROCESSING_FRAME_RATE)  # Number of frames to skip to achieve the desired frame processing rate
     INFERENCE_RATE = FRAME_TO_SKIP * 2  # Define how often to perform classification (inferences)
 
@@ -80,13 +80,13 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/video
         success, frame = cap.read()
 
         # Skip frames to adjust the processing rate
-        for _ in range(FRAME_TO_SKIP):
+        for i in range(FRAME_TO_SKIP):
             cap.grab()  # Grab frames without decoding them
         frame_count += FRAME_TO_SKIP
 
         if success:
             # Run YOLO tracking on the frame, persisting tracks between frames
-            results = model.track(frame, persist=True, tracker=tracker, classes=[0]) # classes=[0] is people
+            results = model.track(frame, persist=True, tracker=tracker, classes=[0])  # classes=[0] is people
             if results[0] is not None and results[0].boxes is not None and results[0].boxes.id is not None:
                 # Get the boxes and track IDs
                 boxes = results[0].boxes.xywh.cpu()
@@ -106,9 +106,10 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/video
                 # For each bounding boxes and people_id
                 for box, people_id in zip(boxes, people_ids):
 
-                    # Initialize inference counter for the person if not already present
+                    # Initialize inference counter and pedestrian attributes for the person if not already present
                     if people_id not in number_of_inferences:
                         number_of_inferences[people_id] = 0
+                        pedestrian_attributes[people_id] = "?"
 
                     x, y, w, h = box  # (x, y) = coordinates of the center; (w, h) = width and height of the bounding box
                     top_left_corner = (int(x - w / 2), int(y - h / 2))  # top-left corner of the bounding box
@@ -149,22 +150,23 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/video
                         hat = 1 if (probability_sum_hat[people_id] / number_of_inferences[people_id]) > HAT_THRESHOLD else 0
 
                         # Create the list of pedestrian attributes and trajectory to display
-                        pedestrian_attributes = [f"Gender: {'F' if gender else 'M'}"]
+                        pedestrian_attributes[people_id] = [f"Gender: {'F' if gender else 'M'}"]
                         if bag and hat:
-                            pedestrian_attributes.append("Bag Hat")
+                            pedestrian_attributes[people_id].append("Bag Hat")
                         elif bag:
-                            pedestrian_attributes.append("Bag")
+                            pedestrian_attributes[people_id].append("Bag")
                         elif hat:
-                            pedestrian_attributes.append("Hat")
+                            pedestrian_attributes[people_id].append("Hat")
                         else:
-                            pedestrian_attributes.append("No Bag No Hat")
-                        pedestrian_attributes.append(f", {crossed_line_by_people.get(people_id)}")
+                            pedestrian_attributes[people_id].append("No Bag No Hat")
+                        pedestrian_attributes[people_id].append(f"{crossed_line_by_people.get(people_id)}")
 
                     # Draw the pedestrian attributes below the bounding box
-                    gui.add_info(annotated_frame, pedestrian_attributes, bottom_left_corner, 0.5, 2)
+                    gui.add_info(annotated_frame, pedestrian_attributes[people_id], bottom_left_corner, 0.5, 2)
 
                 # Display the annotated frame
                 if show:
+                    cv2.namedWindow("YOLO Tracking", cv2.WINDOW_NORMAL)
                     cv2.setWindowProperty("YOLO Tracking", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
                     cv2.imshow("YOLO Tracking", annotated_frame)
 
