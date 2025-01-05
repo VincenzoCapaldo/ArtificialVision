@@ -3,24 +3,14 @@
 <h2> Project Description </h2>
 This project, part of the Artificial Vision Contest 2025, aims to develop an advanced system for automatic video analysis.
 The proposed software will:
-
 Detect and track all people in real-time within a video.
-Recognize pedestrian attributes such as gender, bags, hats, and other visual details.
+Recognize pedestrian attributes such as gender, bags, hats.
 Analyze behaviors by monitoring virtual line crossings.
-Challenges Addressed
-Variable lighting conditions
-Differences in scale and perspective
-Partial or full occlusions
-Interactions between objects
 
 <h2> Goals </h2>
 Ensure high precision in detection and classification to minimize errors. The system will process videos in real-time, display results through an interactive interface, and generate a standardized output file.
 
-Object Detection
-Implementation of YOLOv11 for real-time object detection.
-
 <h2> Project Structure </h2> 
-
 ├── classification/                                # Classification files
 │   ├── dataset.py                                 # Dataset handling for classification tasks
 │   ├── nets.py                                    # Model definitions and architectures for pedestrian attribute classification
@@ -52,29 +42,29 @@ Implementation of YOLOv11 for real-time object detection.
 ├── tracking.py                                    # Tracking-related functions using BoT-SORT
 └── README.md                                      # Project documentation
 
-
-
-<h2> Requirements: </h2>
+<h2> Requirements </h2>
 Programming Language : Python 3.+
 
 <h2> Libraries </h2>
-OpenCV
-TensorFlow or PyTorch
-Scikit-image
-NumPy, Pandas
-matplotlib 
-yolo
-pip 
-
+torch
+torchvision
+ultralytics
+opencv-python
+Pillow
+numpy
+matplotlib
+scikit-learn
+tqdm
+seaborn
 
 <h2> Recommended Hardware </h2>
-GPU with CUDA support (NVIDIA) for optimal performance.
-Execution
+GPU with CUDA support for optimal performance.
+
+<h2> Execution </h2>
 To run the project, execute the main file:
-python3 main.py
+python main.py
 
 <h2> Authors </h2>
-
 <b> Alberti Andrea </b>  – ID: 0622702370
 <b> Attianese Carmine </b> – ID: 0622702355
 <b> Capaldo Vincenzo </b> – ID: 0622702347
