@@ -10,7 +10,8 @@ import torchvision.transforms as T
 from collections import defaultdict
 
 
-def start_track(device, model_path="models/yolo11m.pt", video_path="videos/video.mp4", show=False, tracker="confs/botsort.yaml"):
+def start_track(device, model_path="models/yolo11m.pt", video_path="videos/video.mp4", show=False,
+                tracker="confs/botsort.yaml"):
     """
     Main function to perform people tracking in a video using a pre-trained YOLO model.
 
@@ -27,8 +28,8 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/video
     model = YOLO(model_path).to(device)
 
     # Caricamento del modello per la classificazione
-    classification = PARMultiTaskNet(backbone='resnet50', pretrained=False, attention=True).to(device)
-    checkpoint_path = './models/classification_model.pth'
+    classification = PARMultiTaskNet(backbone='resnet18', pretrained=False, attention=True).to(device)
+    checkpoint_path = './models/resnet18.pth'
     checkpoint = torch.load(checkpoint_path, map_location=device)
     classification.load_state_dict(checkpoint['model_state'])
     classification.eval()
@@ -40,31 +41,32 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/video
     ])
 
     probability_sum_gender = defaultdict(float)
-    denominator_gender = defaultdict(float)
     probability_sum_bag = defaultdict(float)
-    denominator_bag = defaultdict(float)
     probability_sum_hat = defaultdict(float)
-    denominator_hat = defaultdict(float)
-    pedestrian_attribute = []
+    number_of_inferences = {}
+    pedestrian_attributes = []
+    # Store the track history (for each ID, its trajectory)
+    track_history = defaultdict(lambda: [])
+
+    crossed_line_by_people = {}  # Stores the lines traversed by each ID
 
     # Load lines info
     lines_info = get_lines_info()
 
     # Open the video file
     cap = cv2.VideoCapture(video_path)
-    fps = int(cap.get(cv2.CAP_PROP_FPS) + 1) # calcola gli fps del video
+    fps = int(cap.get(cv2.CAP_PROP_FPS) + 1)  # calcola gli fps del video
 
     # CONSTANTS
     PROCESSING_FRAME_RATE = 8  # Frame to process in 1 second
     FRAME_TO_SKIP = int(fps / PROCESSING_FRAME_RATE)
     INFERENCE_RATE = FRAME_TO_SKIP * 2
     frame_count = 0
-
-    # Store the track history (for each ID, its trajectory)
-    track_history = defaultdict(lambda: [])
-
-    lista_attraversamenti = {}  # Stores the lines traversed by each ID
-    lista_persone = []
+    
+    GENDER_THRESHOLD = 0.5
+    BAG_THRESHOLD = 0.5
+    HAT_THRESHOLD = 0.75
+    
 
     # Loop through the video frames
     while cap.isOpened():
@@ -92,8 +94,8 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/video
                 for box, people_id in zip(boxes, people_ids):
 
                     # Add a new person (se non è già presente)
-                    if people_id not in lista_persone:
-                        lista_persone.append(people_id)
+                    if people_id not in number_of_inferences:
+                        number_of_inferences[people_id] = 0
 
                     x, y, w, h = box
                     top_left_corner = (int(x - w / 2), int(y - h / 2))
@@ -110,66 +112,61 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/video
                     # Draw the tracked people ID
                     gui.add_people_id(annotated_frame, people_id, top_left_corner)
                     # Draw general information about the scene
-                    gui.add_info_scene(annotated_frame, text)
+                    gui.add_info(annotated_frame, text)
                     # Draw lines
-                    annotated_frame = gui.draw_lines_on_frame(annotated_frame, lines_info)
+                    gui.draw_lines_on_frame(annotated_frame, lines_info)
                     # share bounding box
 
-                    # Gestione delle traiettorie e disegno delle linee di tracciamento
+                    # Gestione delle traiettorie
                     track = track_history[people_id]
-                    trajectory_point = 2  # Maintain up to 2 tracking points
-                    track.append((float(x), float(y + h / 2)))  # x, y center point ''' (lower center of the bounding box) '''
-                    if len(track) > trajectory_point: 
+                    track.append((float(x), float(y + h / 2)))  # lower center of the bounding box
+                    if len(track) > 2:  # Maintain up to 2 tracking points
                         track.pop(0)
 
                     # checking crossed lines
                     crossed_line_ids = check_crossed_lines(track, lines_info)
                     if len(crossed_line_ids) != 0:
-                        if not (people_id in lista_attraversamenti):
-                            lista_attraversamenti[people_id] = []
-                        lista_attraversamenti[people_id].extend(crossed_line_ids)
+                        if people_id not in crossed_line_by_people:
+                            crossed_line_by_people[people_id] = []
+                        crossed_line_by_people[people_id].extend(crossed_line_ids)
 
-                    # Inferenza
+                    # Inference
                     if frame_count % INFERENCE_RATE == 0:
-                        screen = gui.get_bounding_box_image(frame, top_left_corner, bottom_right_corner)
-                        image = transforms(Image.fromarray(screen).convert('RGB')).to(device)
-                        image = image.unsqueeze(0)  # Aggiunge una dimensione batch
-                        outputs = classification(image)
+                        people_img = gui.get_bounding_box_image(frame, top_left_corner, bottom_right_corner)
+                        people_img = transforms(Image.fromarray(people_img).convert('RGB')).unsqueeze(0).to(device)
 
-                        probability = {}
-                        for task in ["gender", "bag", "hat"]:
-                            probability[task] = torch.sigmoid(outputs[task]).item()
+                        # Classificazione
+                        outputs = classification(people_img)
+                        number_of_inferences[people_id] += 1
 
                         # Calcolo della media aritmetica
-                        probability_sum_gender[people_id] += probability["gender"]
-                        denominator_gender[people_id] += 1
-                        probability_sum_bag[people_id] += probability["bag"]
-                        denominator_bag[people_id] += 1
-                        probability_sum_hat[people_id] += probability["hat"]
-                        denominator_hat[people_id] += 1
+                        probability_sum_gender[people_id] += torch.sigmoid(outputs["gender"]).item()
+                        probability_sum_bag[people_id] += torch.sigmoid(outputs["bag"]).item()
+                        probability_sum_hat[people_id] += torch.sigmoid(outputs["hat"]).item()
+                        #if(people_id == 16):
+                            #p=torch.sigmoid(outputs["hat"]).item()
+                            #print(f"PROB_CAP:{p}")
+                        gender = 1 if (probability_sum_gender[people_id] / number_of_inferences[people_id]) > GENDER_THRESHOLD else 0
+                        bag = 1 if (probability_sum_bag[people_id] / number_of_inferences[people_id]) > BAG_THRESHOLD else 0
+                        hat = 1 if (probability_sum_hat[people_id] / number_of_inferences[people_id]) > HAT_THRESHOLD else 0
 
-                        gender = 1 if (probability_sum_gender[people_id] / denominator_gender[people_id]) > 0.5 else 0
-                        bag = 1 if (probability_sum_bag[people_id] / denominator_bag[people_id]) > 0.5 else 0
-                        hat = 1 if (probability_sum_hat[people_id] / denominator_hat[people_id]) > 0.5 else 0
+                        # Creiamo la lista degli attributi da mostrare
+                        pedestrian_attributes = [f"Gender: {'F' if gender else 'M'}"]
 
-                        # Costruisci la lista di attributi da mostrare
-                        if gender:
-                            pedestrian_attribute = ["Gender: F"]
-                        else:
-                            pedestrian_attribute = ["Gender: M"]
-                        if not bag and not hat:
-                            pedestrian_attribute.append("No Bag No Hat")
-                        if bag and not hat:
-                            pedestrian_attribute.append("Bag")
-                        if not bag and hat:
-                            pedestrian_attribute.append("Hat")
                         if bag and hat:
-                            pedestrian_attribute.append("Bag Hat")
+                            pedestrian_attributes.append("Bag Hat")
+                        elif bag:
+                            pedestrian_attributes.append("Bag")
+                        elif hat:
+                            pedestrian_attributes.append("Hat")
+                        else:
+                            pedestrian_attributes.append("No Bag No Hat")
 
-                        pedestrian_attribute.append(f"[{', '.join(map(str, lista_attraversamenti.get(people_id, [])))}]")
+                        pedestrian_attributes.append(
+                            f"[{', '.join(map(str, crossed_line_by_people.get(people_id, [])))}]")
 
                     # Disegna gli attributi sotto il bounding box
-                    gui.add_info_scene(annotated_frame, pedestrian_attribute, bottom_left_corner, 0.5, 2)
+                    gui.add_info(annotated_frame, pedestrian_attributes, bottom_left_corner, 0.5, 2)
 
                 # Display the annotated frame
                 if show:
@@ -193,11 +190,27 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/video
     # Scrittura dei risultati su file
     # Create a result-writer object to write on a json file the results
     output_writer = OutputWriter()
-    for people_id in lista_persone:
-        gender = 1 if (probability_sum_gender[people_id] / denominator_gender[people_id]) > 0.5 else 0
-        bag = 1 if (probability_sum_bag[people_id] / denominator_bag[people_id]) > 0.5 else 0
-        hat = 1 if (probability_sum_hat[people_id] / denominator_hat[people_id]) > 0.5 else 0
-        trajectory = lista_attraversamenti[people_id] if people_id in lista_attraversamenti else []
-        output_writer.add_person(people_id, gender, bag, hat, trajectory)
+    for people_id in number_of_inferences:
+        if number_of_inferences[people_id] != 0:
+            gender = 1 if (probability_sum_gender[people_id] / number_of_inferences[people_id]) > GENDER_THRESHOLD else 0
+            bag = 1 if (probability_sum_bag[people_id] / number_of_inferences[people_id]) > BAG_THRESHOLD else 0
+            hat = 1 if (probability_sum_hat[people_id] / number_of_inferences[people_id]) > HAT_THRESHOLD else 0
+            trajectory = crossed_line_by_people[people_id] if people_id in crossed_line_by_people else []
+            output_writer.add_person(people_id, gender, bag, hat, trajectory)
 
     output_writer.write_output()
+
+    # Apri il file in scrittura
+    with open("probabilities.txt", "w+") as f:
+        # Intestazione del file (facoltativa)
+        f.write("people_id,avg_gender,avg_bag,avg_hat\n")
+
+        for people_id in number_of_inferences:
+            if number_of_inferences[people_id] != 0:
+                # Calcolo delle medie
+                avg_gender = probability_sum_gender[people_id] / number_of_inferences[people_id]
+                avg_bag = probability_sum_bag[people_id] / number_of_inferences[people_id]
+                avg_hat = probability_sum_hat[people_id] / number_of_inferences[people_id]
+
+                # Scrive i valori di media nel file
+                f.write(f"{people_id},{avg_gender},{avg_bag},{avg_hat}\n")

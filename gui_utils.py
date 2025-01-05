@@ -29,8 +29,8 @@ def add_people_id(frame, people_id, top_left_corner, background_color=(255, 255,
     text = f"{people_id}"
 
     # Set the font scale and thickness
-    font_scale = 0.6
-    font_thickness = 2
+    font_scale = 1
+    font_thickness = 3
     font = cv.FONT_HERSHEY_SIMPLEX
 
     # Calculate the text size for positioning
@@ -58,7 +58,7 @@ def add_people_id(frame, people_id, top_left_corner, background_color=(255, 255,
         font_thickness)
 
 
-def add_info_scene(frame, text, top_left_corner=(10, 10), font_scale=0.8, font_thickness=2):
+def add_info(frame, text, top_left_corner=(10, 10), font_scale=0.8, font_thickness=2):
     """
     display the general information in the top left corner of the frame
     :param frame: the frame on which to draw the information
@@ -141,8 +141,6 @@ def draw_lines_on_frame(frame, lines_info):
 
         # Draw the arrow
         cv.arrowedLine(frame, arrow_start, arrow_end, (255, 0, 0), thickness=3, tipLength=0.5)
-
-    return frame
 
 
 def get_bounding_box_image(frame, top_left_corner, bottom_right_corner):

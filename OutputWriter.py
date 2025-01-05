@@ -43,6 +43,8 @@ class OutputWriter:
         bag = bool(bag)
         hat = bool(hat)
 
+        # trajectory = "[" + ",".join(str(x) for x in trajectory) + "]"
+
         # Create a dictionary for the new person with their details
         person = {
             "id": person_id,  # Person's ID
