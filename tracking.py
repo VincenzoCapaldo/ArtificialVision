@@ -31,7 +31,7 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/video
 
     # Load the classification model for pedestrian attributes (gender, bag, hat)
     classification = PARMultiTaskNet(backbone='resnet50', pretrained=False, attention=True).to(device)
-    checkpoint_path = './models/classification_model.pth'
+    checkpoint_path = './models/classification_model_strategy2.pth'
     checkpoint = torch.load(checkpoint_path, map_location=device)
     classification.load_state_dict(checkpoint['model_state'])
     classification.eval()

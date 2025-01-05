@@ -58,7 +58,7 @@ def test_model(model, dataloader, device, thresholds):
 
     # Calculate evaluation metrics for each task
     metrics = {}
-    output_dir = "./classification/confusion_matrices"  # Directory to save confusion matrices
+    output_dir = "./classification/confusion_matrices/strategy2"  # Directory to save confusion matrices
     os.makedirs(output_dir, exist_ok=True)
 
     for task in ["gender", "bag", "hat"]:
@@ -90,7 +90,7 @@ def test_model(model, dataloader, device, thresholds):
 if __name__ == "__main__":
     # Test configuration
     data_dir = './dataset'  # Path to the dataset
-    model_path = './models/classification_model.pth'  # Path to the model checkpoint
+    model_path = './models/classification_model_strategy2.pth'  # Path to the model checkpoint
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # Use GPU if available
 
     # Define thresholds for each task
