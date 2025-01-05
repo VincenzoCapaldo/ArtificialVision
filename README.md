@@ -11,6 +11,9 @@ Analyze behaviors by monitoring virtual line crossings.
 Ensure high precision in detection and classification to minimize errors. The system will process videos in real-time, display results through an interactive interface, and generate a standardized output file.
 
 <h2> Project Structure </h2> 
+
+```plaintext
+
 ├── classification/                                # Classification files
 │   ├── dataset.py                                 # Dataset handling for classification tasks
 │   ├── nets.py                                    # Model definitions and architectures for pedestrian attribute classification
@@ -41,6 +44,9 @@ Ensure high precision in detection and classification to minimize errors. The sy
 ├── OutputWriter.py                                # Manages saving results and generating reports
 ├── tracking.py                                    # Tracking-related functions using BoT-SORT
 └── README.md                                      # Project documentation
+  
+
+```
 
 <h2> Requirements </h2>
 Programming Language : Python 3.+
