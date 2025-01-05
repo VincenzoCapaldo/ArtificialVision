@@ -71,7 +71,7 @@ To run the project, execute the main file:
 python main.py
 
 <h2> Authors </h2>
-<b> Alberti Andrea </b>  – ID: 0622702370
-<b> Attianese Carmine </b> – ID: 0622702355
-<b> Capaldo Vincenzo </b> – ID: 0622702347
-<b> Esposito Paolo </b> – ID: 0622702292
+<b> Alberti Andrea </b>  – ID: 0622702370 <br>
+<b> Attianese Carmine </b> – ID: 0622702355 <br>
+<b> Capaldo Vincenzo </b> – ID: 0622702347 <br>
+<b> Esposito Paolo </b> – ID: 0622702292 <br>
