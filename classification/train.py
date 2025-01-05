@@ -38,9 +38,9 @@ def calculate_class_weights(dataset):
         labels = np.array(dataset[i][1])
 
         # Compute weights for each task, assigning 0.0 if the label is -1
-        gender_weight = gender_weights.get(labels[0], 0.0)
-        bag_weight = bag_weights.get(labels[1], 0.0)
-        hat_weight = hat_weights.get(labels[2], 0.0)
+        gender_weight = gender_weights.get(labels[0].item(), 0.0)
+        bag_weight = bag_weights.get(labels[1].item(), 0.0)
+        hat_weight = hat_weights.get(labels[2].item(), 0.0)
 
         # Assign 0.0 weight if all labels are -1
         if all(label == -1 for label in labels):
@@ -49,7 +49,6 @@ def calculate_class_weights(dataset):
             # Calculate the combined weight as the mean of valid weights
             combined_weight = np.mean([gender_weight, bag_weight, hat_weight])
 
-        # print(labels,combined_weight)
         sample_weights.append(combined_weight)
 
     return np.array(sample_weights)
@@ -110,7 +109,6 @@ def train_one_epoch(model, dataloader, optimizer, device, epoch):
         gender_loss = masked_loss(model.gender_loss, outputs["gender"].squeeze(), labels[:, 0], masks[:, 0])
         bag_loss = masked_loss(model.bag_loss, outputs["bag"].squeeze(), labels[:, 1], masks[:, 1])
         hat_loss = masked_loss(model.hat_loss, outputs["hat"].squeeze(), labels[:, 2], masks[:, 2])
-        # print(gender_loss, bag_loss, hat_loss)
 
         # Combine losses equally across tasks
         loss = 1/3 * (gender_loss + bag_loss + hat_loss)
@@ -157,7 +155,6 @@ def validate(model, dataloader, device, epoch):
             gender_loss = masked_loss(model.gender_loss, outputs["gender"].squeeze(), labels[:, 0], masks[:, 0])
             bag_loss = masked_loss(model.bag_loss, outputs["bag"].squeeze(), labels[:, 1], masks[:, 1])
             hat_loss = masked_loss(model.hat_loss, outputs["hat"].squeeze(), labels[:, 2], masks[:, 2])
-            #print(gender_loss,bag_loss,hat_loss)
 
             # Combine losses equally across tasks
             loss = 1 / 3 * (gender_loss + bag_loss + hat_loss)

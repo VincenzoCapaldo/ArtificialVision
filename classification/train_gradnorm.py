@@ -329,8 +329,7 @@ def start_training(model, train_loader, val_loader, best_val_loss, optimizer, de
         loss_history.append(running_loss / len(train_loader))
 
         # --- VALIDATION ---
-        weighted_val_loss, val_metrics = validate(model, val_loader, device, epoch,
-                                                  weights=torch.tensor([1 / 3, 1 / 3, 1 / 3]))
+        weighted_val_loss, val_metrics = validate(model, val_loader, device, epoch, weights=torch.tensor([1 / 3, 1 / 3, 1 / 3]))
         metrics_history.append(val_metrics)
         val_loss_history.append(weighted_val_loss)
 
@@ -479,7 +478,7 @@ def main():
         l0 = None
 
     print("Starting training...")
-    # Start the training process, and log task weights and losses
+    # Start the training process and log task weights and losses
     log_weights, log_loss = start_training(model, train_loader, val_loader, best_val_loss, optimizer, device,
                                            start_epoch, args.epochs, args.checkpoint_dir, args.patience, weights, l0)
 

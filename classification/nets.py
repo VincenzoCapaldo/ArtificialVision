@@ -35,7 +35,7 @@ class Backbone(nn.Module):
             # Remove the global average pooling e classifier layers
             self.backbone = nn.Sequential(*list(backbone.children())[:-2])
 
-        # Assicura che tutti i parametri abbiano requires_grad=True
+        # Ensure all parameters have requires_grad=True
         for param in self.backbone.parameters():
             param.requires_grad = True
 
@@ -120,7 +120,7 @@ class ClassificationHead(nn.Module):
         """
         if self.attention:
             x = self.attention(x)
-            x = self.se_block(x)  # SE Block dopo CBAM
+            x = self.se_block(x)  # SE Block after CBAM
 
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
@@ -145,7 +145,7 @@ class PARMultiTaskNet(nn.Module):
         """
         super(PARMultiTaskNet, self).__init__()
 
-        # defining backbone for feature extraction
+        # Defining backbone for feature extraction
         self.backbone = Backbone(name=backbone, pretrained=pretrained)
 
         # Heads for each task: gender, bag, and hat prediction

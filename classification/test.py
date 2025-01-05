@@ -70,8 +70,7 @@ def test_model(model, dataloader, device, thresholds):
         metrics[task] = {"accuracy": accuracy, "precision": precision, "recall": recall, "f1": f1}
 
         # Print metrics for the task
-        print(
-            f"{task.capitalize()} - Accuracy: {accuracy:.4f}, Precision: {precision:.4f}, Recall: {recall:.4f}, F1: {f1:.4f}")
+        print(f"{task.capitalize()} - Accuracy: {accuracy:.4f}, Precision: {precision:.4f}, Recall: {recall:.4f}, F1: {f1:.4f}")
 
         # Compute and save the confusion matrix
         cm = confusion_matrix(all_labels[task], all_predictions[task])
