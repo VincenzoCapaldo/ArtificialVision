@@ -31,7 +31,7 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/video
 
     # Load the classification model for pedestrian attributes (gender, bag, hat)
     classification = PARMultiTaskNet(backbone='resnet50', pretrained=False, attention=True).to(device)
-    checkpoint_path = './models/model5.pth'
+    checkpoint_path = './models/classification_model.pth'
     checkpoint = torch.load(checkpoint_path, map_location=device)
     classification.load_state_dict(checkpoint['model_state'])
     classification.eval()
@@ -191,20 +191,3 @@ def start_track(device, model_path="models/yolo11m.pt", video_path="videos/video
             trajectory = crossed_line_by_people[people_id]
             output_writer.add_person(people_id, gender, bag, hat, trajectory)
     output_writer.write_output()
-
-    '''
-    # Apri il file in scrittura
-    with open("probabilities.txt", "w+") as f:
-        # Intestazione del file (facoltativa)
-        f.write("people_id,avg_gender,avg_bag,avg_hat\n")
-
-        for people_id in number_of_inferences:
-            if number_of_inferences[people_id] != 0:
-                # Calcolo delle medie
-                avg_gender = probability_sum_gender[people_id] / number_of_inferences[people_id]
-                avg_bag = probability_sum_bag[people_id] / number_of_inferences[people_id]
-                avg_hat = probability_sum_hat[people_id] / number_of_inferences[people_id]
-
-                # Scrive i valori di media nel file
-                f.write(f"{people_id},{avg_gender},{avg_bag},{avg_hat}\n")
-    '''

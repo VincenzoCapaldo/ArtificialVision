@@ -88,12 +88,10 @@ def test_model(model, dataloader, device, thresholds):
     return metrics
 
 
-
-
 if __name__ == "__main__":
     # Test configuration
     data_dir = './dataset'  # Path to the dataset
-    model_path = './classification/checkpoints/resnet50.pth'  # Path to the model checkpoint
+    model_path = './models/classification_model.pth'  # Path to the model checkpoint
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # Use GPU if available
 
     # Define thresholds for each task

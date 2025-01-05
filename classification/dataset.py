@@ -29,7 +29,6 @@ class PARCustomDataset(Dataset):
                     img_subdir = "test_set" if "test_set" in txt_file else "training_set"
                     img_path = os.path.join(data_dir, img_subdir, img_name)
 
-                    # Assicurati che l'immagine esista
                     if os.path.exists(img_path):
 
                         # Avoid labels = -1, -1, -1
@@ -134,7 +133,7 @@ if __name__ == "__main__":
     print(f"Validation dataset size: {len(val_dataset)}")
     print(f"Test dataset size: {len(test_dataset)}")
 
-    # Esempio di accesso ai dati
+    # Example
     for i in range(len(train_dataset)):
         image, labels = train_dataset[i]
         if image is not None and labels is not None:
