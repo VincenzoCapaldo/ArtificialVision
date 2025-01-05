@@ -15,14 +15,20 @@ def main():
         device = torch.device("cpu")
     print(f"Using device: {device}")
 
-    # Path to the input video file
+    # Path to the YOLO model file
+    model_path = "models/yolo11m.pt"
+
+    # Path to the video to analyze
     video_path = 'videos/Atrio.mp4'
 
     # Flag to control if the processed video should be displayed
     show = True
 
+    # Path to the tracker configuration file
+    tracker = "confs/botsort.yaml"
+
     # Start the tracking process
-    start_track(device, video_path=video_path, show=show)
+    start_track(device, model_path, video_path, show, tracker)
 
 
 if __name__ == "__main__":

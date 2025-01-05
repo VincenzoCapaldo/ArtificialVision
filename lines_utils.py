@@ -331,7 +331,7 @@ def check_crossed_lines(track, lines_info):
 
     Returns:
     list
-        A list of the IDs of the lines that have been crossed.
+        A list of the IDs of the lines that have been crossed
     """
     crossed_line_ids = []  # List to store the IDs of crossed lines
 

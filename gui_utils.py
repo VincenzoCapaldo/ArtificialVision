@@ -106,7 +106,7 @@ def add_info(frame, text, top_left_corner=(10, 10), font_scale=0.8, font_thickne
         )
 
 
-def draw_lines_on_frame(frame, lines_info):
+def add_lines_on_frame(frame, lines_info):
     """
     draws blue lines on the frame as defined by the lines_info list
     :param frame: the current frame, given in numpy array format
