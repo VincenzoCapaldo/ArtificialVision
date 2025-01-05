@@ -277,14 +277,13 @@ def start_training(model, train_loader, val_loader, best_val_loss, optimizer, de
             # compute the L2 norm of the gradients for each task
             gw = []
             for i in range(len(loss)):
-                parameters = None
-                if i == 0:
-                    parameters = model.gender_head.parameters()
-                elif i == 1:
-                    parameters = model.bag_head.parameters()
-                elif i == 2:
-                    parameters = model.hat_head.parameters()
-                # parameters = model.backbone.backbone[-1].parameters()
+                # if i == 0:
+                #     parameters = model.gender_head.parameters()
+                # elif i == 1:
+                #     parameters = model.bag_head.parameters()
+                # elif i == 2:
+                #     parameters = model.hat_head.parameters()
+                parameters = model.backbone.backbone[-1].parameters()  # Last shared layer
                 dl = torch.autograd.grad(weights[i] * loss[i], parameters, retain_graph=True, create_graph=True)[0]
                 gw.append(torch.norm(dl))
             gw = torch.stack(gw)
