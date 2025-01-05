@@ -18,16 +18,21 @@ class Backbone(nn.Module):
 
         if name == "densenet":
             backbone = models.densenet121(weights=models.DenseNet121_Weights.DEFAULT if pretrained else None)
-            self.out_features = backbone.classifier.in_features  # Numero di canali in uscita
-            # Rimuovi il global average pooling e il layer classifier
+            self.out_features = backbone.classifier.in_features  # Number of channels in output
+
+            # Remove the global average pooling e classifier layers
             self.backbone = nn.Sequential(*list(backbone.features.children()))
         elif name == "resnet18":
             backbone = models.resnet18(weights=models.ResNet18_Weights.DEFAULT if pretrained else None)
-            self.out_features = backbone.fc.in_features
+            self.out_features = backbone.fc.in_features  # Number of channels in output
+
+            # Remove the global average pooling e classifier layers
             self.backbone = nn.Sequential(*list(backbone.children())[:-2])
         elif name == "resnet50":
             backbone = models.resnet50(weights=models.ResNet50_Weights.DEFAULT if pretrained else None)
-            self.out_features = backbone.fc.in_features
+            self.out_features = backbone.fc.in_features  # Number of channels in output
+
+            # Remove the global average pooling e classifier layers
             self.backbone = nn.Sequential(*list(backbone.children())[:-2])
 
         # Assicura che tutti i parametri abbiano requires_grad=True
