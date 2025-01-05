@@ -1,4 +1,5 @@
 import json
+import os
 
 
 class OutputWriter:
@@ -65,6 +66,13 @@ class OutputWriter:
         filename : str
             The path and name of the output file (default is "./result/result.txt").
         """
+        # Extract the directory from the filename
+        directory = os.path.dirname(filename)
+
+        # Create the directory if it does not exist
+        if directory and not os.path.exists(directory):
+            os.makedirs(directory)
+
         # Create the output dictionary with the list of people
         output = {"people": self.people}
 

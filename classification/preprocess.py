@@ -6,100 +6,105 @@ import random
 
 def calculate_class_weights_from_file(file_path='./dataset/training_set.txt'):
     """
-    Calcola i pesi per ciascuna classe in base alla frequenza delle etichette, leggendo dal file di etichette.
+    Calculates the class weights based on the label frequencies by reading from the label file.
 
     Args:
-        file_path (str): Percorso al file che contiene le etichette.
+        file_path (str): Path to the file containing the labels.
 
     Returns:
-        dict: Dizionario con i pesi per ciascuna classe.
+        dict: A dictionary with the weights for each class.
     """
-    # Verifica che il file esista
+    # Check if the file exists
     if not os.path.exists(file_path):
-        raise FileNotFoundError(f"Il file {file_path} non esiste.")
+        raise FileNotFoundError(f"The file {file_path} does not exist.")
 
-    # Legge le etichette dal file
+    # Initialize a dictionary to store labels for each task
     labels = {'gender': [], 'bag': [], 'hat': []}
+
     with open(file_path, 'r') as f:
         for line in f:
             parts = line.strip().split(',')
             if len(parts) >= 4:
-                # Estrae le etichette (gender, bag, hat)
+                # Extract labels for gender, bag, and hat tasks
                 labels['gender'].append(int(parts[3]))
                 labels['bag'].append(int(parts[4]))
                 labels['hat'].append(int(parts[5]))
 
-    # Calcola i pesi per ciascun task separatamente
+    # Calculate weights for each task based on label frequencies
     class_weights = {}
     for task, task_labels in labels.items():
         label_counts = Counter(task_labels)
         max_count = max(label_counts.values())
         class_weights[task] = {label: max_count / count for label, count in label_counts.items() if label != -1}
 
-    # Logging delle statistiche
+    # Log the distribution and weights for each task
     for task, weights in class_weights.items():
-        print(f"Distribuzione delle etichette per {task}: {Counter(labels[task])}")
-        print(f"Pesi delle classi per {task}: {weights}")
+        print(f"Label distribution for {task}: {Counter(labels[task])}")
+        print(f"Class weights for {task}: {weights}")
 
     return class_weights, labels
 
 
 def plot_label_distribution(labels, output_path='./classification/statistics/'):
     """
-    Crea istogrammi per la distribuzione delle etichette (gender, bag, hat).
+    Creates bar plots to visualize the label distribution for gender, bag, and hat tasks.
 
     Args:
-        labels (dict): Dizionario con liste di etichette per ciascun task.
-        output_path (str): Percorso per salvare i grafici.
+        labels (dict): A dictionary with lists of labels for each task.
+        output_path (str): Path to save the generated plots.
     """
+    # Ensure the output directory exists
     os.makedirs(output_path, exist_ok=True)
 
+    # Generate a plot for each task
     for task, task_labels in labels.items():
         label_counts = Counter(task_labels)
         labels_, counts = zip(*label_counts.items())
 
         plt.figure(figsize=(8, 5))
         plt.bar(labels_, counts, color='skyblue')
-        plt.xlabel('Etichette')
-        plt.ylabel('Conteggio')
-        plt.title(f'Distribuzione delle etichette per {task}')
+        plt.xlabel('Labels')
+        plt.ylabel('Count')
+        plt.title(f'Label Distribution for {task}')
         plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+        # Save the plot to the specified directory
         plt.savefig(os.path.join(output_path, f'{task}_distribution.png'))
         plt.close()
-        print(f"Grafico della distribuzione per {task} salvato in {output_path}")
+        print(f"Distribution plot for {task} saved in {output_path}")
 
 
 
-def dividi_train_val(input_file, train_file, val_file, train_ratio=0.8, random_seed=None):
+def split_train_val(input_file, train_file, val_file, train_ratio=0.8, random_seed=None):
     """
-    Divide un file di testo in due file: training e validation.
+    Splits a text file into two separate files: training and validation.
 
     Args:
-        input_file (str): Percorso del file di input.
-        train_file (str): Percorso del file di result per il training set.
-        val_file (str): Percorso del file di result per il validation set.
-        train_ratio (float): Proporzione di dati da assegnare al training set (default 0.8).
-        random_seed (int, optional): Seed per il generatore di numeri casuali per garantire riproducibilità.
+        input_file (str): Path to the input file.
+        train_file (str): Path to the output file for the training set.
+        val_file (str): Path to the output file for the validation set.
+        train_ratio (float): Proportion of data assigned to the training set (default: 0.8).
+        random_seed (int, optional): Seed for the random number generator for reproducibility.
     """
-    # Imposta il seed per la riproducibilità, se fornito
+    # Set the random seed if provided
     if random_seed is not None:
         random.seed(random_seed)
 
-    # Leggi tutte le righe dal file di input
+    # Read all lines from the input file
     with open(input_file, 'r') as infile:
         lines = infile.readlines()
 
-    # Mescola le righe in modo casuale
+    # Shuffle the lines randomly
     random.shuffle(lines)
 
-    # Calcola l'indice di divisione
+    # Calculate the split index
     split_index = int(len(lines) * train_ratio)
 
-    # Suddividi le righe in training e validation set
+    # Divide the lines into training and validation sets
     train_lines = lines[:split_index]
     val_lines = lines[split_index:]
 
-    # Scrivi le righe nei rispettivi file di result
+    # Write the lines to the respective output files
     with open(train_file, 'w') as train_outfile:
         train_outfile.writelines(train_lines)
 
@@ -108,13 +113,14 @@ def dividi_train_val(input_file, train_file, val_file, train_ratio=0.8, random_s
 
 
 if __name__ == "__main__":
+    # Uncomment and modify the following lines for specific use cases:
 
+    # Split the dataset into training and validation sets
     # input_file = "./dataset/training_set.txt"
     # train_file = "./dataset/train_split.txt"
     # val_file = "./dataset/val_split.txt"
-    #
-    # dividi_train_val(input_file, train_file, val_file, 0.8, 65464)
-    # print("Training set diviso in train e validation")
+    # split_train_val(input_file, train_file, val_file, 0.8, 65464)
+    # print("Dataset split into training and validation sets.")
 
     #--- TRAIN PLOT ---
     weights, labels = calculate_class_weights_from_file("./dataset/train_split.txt")
@@ -125,6 +131,8 @@ if __name__ == "__main__":
     # --- TEST PLOT ---
     #weights, labels = calculate_class_weights_from_file("./dataset/test_set.txt")
 
-    print("Pesi calcolati:", weights)
-    # Crea e salva i grafici della distribuzione
+    # Print the calculated weights
+    print("Calculated weights:", weights)
+
+    # Generate and save the distribution plots
     plot_label_distribution(labels)

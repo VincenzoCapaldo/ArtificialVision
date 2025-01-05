@@ -8,20 +8,22 @@ import torchvision.transforms as T
 class PARCustomDataset(Dataset):
     def __init__(self, data_dir="./dataset", txt_file="training_set.txt", transforms=None):
         """
-        Classe base per gestire il dataset di PAR.
-        :param data_dir: Path alla directory delle immagini (default: "./dataset")
-        :param txt_file: File di testo con le annotazioni (default: "training_set.txt")
-        :param transforms: Trasformazioni da applicare alle immagini
+        Base class for handling the PAR (Pedestrian Attribute Recognition) dataset.
+
+        :param data_dir: Path to the directory containing images (default: "./dataset")
+        :param txt_file: Text file containing image annotations (default: "training_set.txt")
+        :param transforms: Transformations to be applied to the images
         """
         self.data_dir = data_dir
         self.txt_file = txt_file
         self.transforms = transforms
 
-        # Carica i dati dal file txt
+        # Load data from the annotation file
         self.data = []
         with open(os.path.join(data_dir, txt_file), 'r') as f:
             for line in f:
                 try:
+                    # Parse each line of the annotation file
                     parts = line.strip().split(',')
                     img_name, gender, bag, hat = parts[0], int(parts[3]), int(parts[4]), int(parts[5])
                     img_subdir = "test_set" if "test_set" in txt_file else "training_set"
@@ -29,42 +31,50 @@ class PARCustomDataset(Dataset):
 
                     # Assicurati che l'immagine esista
                     if os.path.exists(img_path):
-                        self.data.append((img_path, [gender, bag, hat]))
+
+                        # Avoid labels = -1, -1, -1
+                        if gender != -1 or bag != -1 or hat != -1:
+                            self.data.append((img_path, [gender, bag, hat]))
                     else:
-                        print(f"Immagine mancante: {img_path}")
+                        print(f"Missing image: {img_path}")
                 except Exception as e:
-                    print(f"Errore nel parsing della linea: {line}. Dettagli: {e}")
+                    print(f"Error parsing line: {line}. Details: {e}")
 
     def __len__(self):
+        """
+        Returns the total number of samples in the dataset.
+        """
         return len(self.data)
 
     def __getitem__(self, index):
         """
-        Restituisce un elemento dal dataset.
-        :param index: Indice dell'elemento
-        :return: Tuple (immagine, label)
+        Fetches an item from the dataset at a specific index.
+
+        :param index: Index of the desired item
+        :return: Tuple (image, label)
         """
         try:
             img_path, labels = self.data[index]
-            image = Image.open(img_path).convert('RGB')
+            image = Image.open(img_path).convert('RGB')  # Open and convert the image to RGB format
+
+            # Apply transformations if specified
             if self.transforms:
                 image = self.transforms(image)
             return image, torch.tensor(labels, dtype=torch.float32)
         except Exception as e:
-            print(f"Errore durante il caricamento dell'immagine o delle etichette per l'indice {index}. Dettagli: {e}")
+            print(f"Error loading image or labels at index {index}. Details: {e}")
             return None, None
 
 
 class TrainDataset(PARCustomDataset):
     def __init__(self, data_dir="./dataset", txt_file="train_split.txt"):
         """
-        Classe per il dataset di training con split train/val.
-        :param data_dir: Path alla directory delle immagini (default: "./dataset")
-        :param txt_file: File di testo con le annotazioni (default: "training_set.txt")
-        :param val_ratio: Percentuale di dati per la validazione
-        :param train: True per il set di training, False per il set di validazione
+        Subclass for handling the training dataset
+
+        :param data_dir: Path to the directory containing images (default: "./dataset")
+        :param txt_file: Annotation file for training (default: "train_split.txt")
         """
-        # Trasformazioni specifiche per train e validation
+        # Specify transformations for training
         transforms = T.Compose([
             T.Resize((224, 224)),
             T.RandomHorizontalFlip(p=0.5),
@@ -79,13 +89,12 @@ class TrainDataset(PARCustomDataset):
 class ValidationDataset(PARCustomDataset):
     def __init__(self, data_dir="./dataset", txt_file="val_split.txt"):
         """
-        Classe per il dataset di training con split train/val.
-        :param data_dir: Path alla directory delle immagini (default: "./dataset")
-        :param txt_file: File di testo con le annotazioni (default: "training_set.txt")
-        :param val_ratio: Percentuale di dati per la validazione
-        :param train: True per il set di training, False per il set di validazione
+        Initializes the validation dataset.
+
+        :param data_dir: Path to the directory containing images (default: "./dataset")
+        :param txt_file: Annotation file for validation (default: "val_split.txt")
         """
-        # Trasformazioni specifiche per train e validation
+        # Specify transformations for validation
         transforms = T.Compose([
             T.Resize((224, 224)),
             T.ToTensor(),
@@ -98,10 +107,12 @@ class ValidationDataset(PARCustomDataset):
 class TestDataset(PARCustomDataset):
     def __init__(self, data_dir="./dataset", txt_file="test_set.txt"):
         """
-        Classe per il dataset di test.
-        :param data_dir: Path alla directory delle immagini (default: "./dataset")
-        :param txt_file: File di testo con le annotazioni (default: "test_set.txt")
+        Initializes the test dataset.
+
+        :param data_dir: Path to the directory containing images (default: "./dataset")
+        :param txt_file: Annotation file for testing (default: "test_set.txt")
         """
+        # Specify transformations for testing
         transforms = T.Compose([
             T.Resize((224, 224)),
             T.ToTensor(),
@@ -111,10 +122,10 @@ class TestDataset(PARCustomDataset):
 
 
 if __name__ == "__main__":
-    # Test delle classi
+    # Test the dataset classes
     data_dir = "./dataset"
 
-    # Dataset di training
+    # Instantiate the datasets
     train_dataset = TrainDataset(data_dir=data_dir)
     val_dataset = ValidationDataset(data_dir=data_dir)
     test_dataset = TestDataset(data_dir=data_dir)
@@ -127,4 +138,4 @@ if __name__ == "__main__":
     for i in range(len(train_dataset)):
         image, labels = train_dataset[i]
         if image is not None and labels is not None:
-            print(f"Immagine shape: {image.shape}, Labels: {labels}")
+            print(f"Image shape: {image.shape}, Labels: {labels}")
