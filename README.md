@@ -44,14 +44,13 @@ Ensure high precision in detection and classification to minimize errors. The sy
 ├── OutputWriter.py                                # Manages saving results and generating reports
 ├── tracking.py                                    # Tracking-related functions using BoT-SORT
 └── README.md                                      # Project documentation
-  
 
 ```
 
 <h2> Requirements </h2>
 Programming Language : Python 3.+
 
-<h2> Libraries </h2>
+<h2> Dependencies </h2>
 torch
 torchvision
 ultralytics
@@ -67,11 +66,11 @@ seaborn
 GPU with CUDA support for optimal performance.
 
 <h2> Execution </h2>
-To run the project, execute the main file:
+To run the project on the example video "videos/Atrio.mp4", execute the main file:
 python main.py
 
 <h2> Authors </h2>
-<b> Alberti Andrea </b>  – ID: 0622702370 <br>
-<b> Attianese Carmine </b> – ID: 0622702355 <br>
-<b> Capaldo Vincenzo </b> – ID: 0622702347 <br>
-<b> Esposito Paolo </b> – ID: 0622702292 <br>
+<b> Alberti Andrea </b>  – ID: 0622702370
+<b> Attianese Carmine </b> – ID: 0622702355
+<b> Capaldo Vincenzo </b> – ID: 0622702347
+<b> Esposito Paolo </b> – ID: 0622702292
