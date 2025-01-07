@@ -37,9 +37,9 @@ def calculate_class_weights(dataset):
         labels = np.array(dataset[i][1])
 
         # Compute weights for each task, assigning 0.0 if the label is -1
-        gender_weight = gender_weights.get(labels[0], 0.0)
-        bag_weight = bag_weights.get(labels[1], 0.0)
-        hat_weight = hat_weights.get(labels[2], 0.0)
+        gender_weight = gender_weights.get(labels[0].item(), 0.0)
+        bag_weight = bag_weights.get(labels[1].item(), 0.0)
+        hat_weight = hat_weights.get(labels[2].item(), 0.0)
 
         # Assign 0.0 weight if all labels are -1
         if all(label == -1 for label in labels):
