@@ -19,7 +19,7 @@ def main():
     model_path = "models/yolo11m.pt"
 
     # Path to the video to analyze
-    video_path = 'videos/Atrio.mp4'
+    video_path = 'videos/Contest.mp4'
 
     # Flag to control if the processed video should be displayed
     show = True
