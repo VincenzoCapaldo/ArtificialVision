@@ -302,10 +302,10 @@ def main():
         )
     else:
         optimizer = optim.SGD([
-            {'params': model.backbone.parameters(), 'lr': args.lr * 0.1},  # Backbone con learning rate ridotto
-            {'params': model.gender_head.parameters()},  # Testa gender
-            {'params': model.bag_head.parameters()},  # Testa bag
-            {'params': model.hat_head.parameters()}  # Testa hat
+            {'params': model.backbone.parameters(), 'lr': args.lr * 0.1},
+            {'params': model.gender_head.parameters()},
+            {'params': model.bag_head.parameters()},
+            {'params': model.hat_head.parameters()}
         ], lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
     # Initialize learning rate scheduler

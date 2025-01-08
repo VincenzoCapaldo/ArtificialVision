@@ -37,9 +37,9 @@ def calculate_class_weights(dataset):
         labels = np.array(dataset[i][1])
 
         # Compute weights for each task, assigning 0.0 if the label is -1
-        gender_weight = gender_weights.get(labels[0], 0.0)
-        bag_weight = bag_weights.get(labels[1], 0.0)
-        hat_weight = hat_weights.get(labels[2], 0.0)
+        gender_weight = gender_weights.get(labels[0].item(), 0.0)
+        bag_weight = bag_weights.get(labels[1].item(), 0.0)
+        hat_weight = hat_weights.get(labels[2].item(), 0.0)
 
         # Assign 0.0 weight if all labels are -1
         if all(label == -1 for label in labels):
@@ -437,10 +437,10 @@ def main():
         )
     else:
         optimizer = optim.SGD([
-            {'params': model.backbone.parameters(), 'lr': args.lr * 0.1},  # Backbone con learning rate ridotto
-            {'params': model.gender_head.parameters()},  # Testa gender
-            {'params': model.bag_head.parameters()},  # Testa bag
-            {'params': model.hat_head.parameters()}  # Testa hat
+            {'params': model.backbone.parameters(), 'lr': args.lr * 0.1},
+            {'params': model.gender_head.parameters()},
+            {'params': model.bag_head.parameters()},
+            {'params': model.hat_head.parameters()}
         ], lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
     # Resume training from a checkpoint
